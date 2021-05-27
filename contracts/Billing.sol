@@ -7,8 +7,9 @@ import "./IBilling.sol";
 import "./Governed.sol";
 
 /**
- * @title Billing
- * @dev The billing
+ * @title Billing Contract
+ * @dev The billing contract allows for graph token to be deposited by a user, and for that token to
+ * be pulled by a permissoned user named 'gateway'. It is owned and controlle by the 'governor'.
  */
 
 contract Billing is IBilling, Governed {
@@ -18,6 +19,12 @@ contract Billing is IBilling, Governed {
     // user address --> user deposited tokens
     mapping(address => uint256) public users;
 
+    /**
+     * @dev Constructor function
+     * @param _gateway   Gateway address
+     * @param _token     Graph Token address
+     * @param _governor  Governor address
+     */
     constructor(
         address _gateway,
         IERC20 _token,
@@ -29,6 +36,9 @@ contract Billing is IBilling, Governed {
         emit GatewayUpdated(_gateway);
     }
 
+    /**
+     * @dev Check if the caller is the gateway.
+     */
     modifier onlyGateway() {
         require(msg.sender == gateway, "!gateway");
         _;
@@ -43,15 +53,29 @@ contract Billing is IBilling, Governed {
         emit GatewayUpdated(_newGateway);
     }
 
+    /**
+     * @dev Deposit tokens into the billing contract
+     * @param _amount  Amount of tokens to deposit
+     */
     function deposit(uint256 _amount) external override {
         _deposit(msg.sender, msg.sender, _amount);
     }
 
-    // So anyone can deposit to a user
+    /**
+     * @dev Deposit tokens into the billing contract for any user
+     * @param _to  Address that tokens are being deposited to
+     * @param _amount  Amount of tokens to deposit
+     */
     function depositTo(address _to, uint256 _amount) external override {
         _deposit(msg.sender, _to, _amount);
     }
 
+    /**
+     * @dev Deposit tokens into the billing contract
+     * @param _from  Address that is sending tokens
+     * @param _user  User that is getting an increase in their deposit
+     * @param _amount  Amount of tokens to deposit
+     */
     function _deposit(
         address _from,
         address _user,
@@ -62,6 +86,11 @@ contract Billing is IBilling, Governed {
         emit Deposit(_user, _amount);
     }
 
+    /**
+     * @dev Withdraw tokens from the billing contract
+     * @param _to  Address that tokens are being withdrawn to
+     * @param _amount  Amount of tokens to withdraw
+     */
     function withdraw(address _to, uint256 _amount) external override {
         require(users[msg.sender] >= _amount, "Too much withdrawn");
         users[msg.sender] = users[msg.sender] - _amount;
@@ -69,13 +98,14 @@ contract Billing is IBilling, Governed {
         emit Withdraw(msg.sender, _to, _amount);
     }
 
-    // // I believe it is possible since it can just go straight to the matic bridge and then get tunneled to ETH mainnet contract. TODO - verify
-    // function withdrawToL1(uint256 _amount) external override  {
-    //     require(users[msg.sender] >= _amount, "Too much withdrawn");
-    //     users[msg.sender] = users[msg.sender].sub(_amount);
-    //     // Would have to call directly to the tunnel address, possibly a raw transaction
-    // }
+    // TODO - research if this is feasible. It should be
+    // function withdrawToL1(uint256 _amount) external override  {}
 
+    /**
+     * @dev Gateway pulls tokens from the billing contract
+     * @param _user  Address that tokens are being pulled from
+     * @param _amount  Amount of tokens to pull
+     */
     function pullDeposit(address _user, uint256 _amount) public override onlyGateway {
         require(users[_user] >= _amount, "Too much pulled");
         users[_user] = users[_user] - _amount;
@@ -83,8 +113,11 @@ contract Billing is IBilling, Governed {
         emit DepositPulled(_user, _amount);
     }
 
-    // So the gateway can just do 1 tx and close out a lot of invoices. For loop on pullDeposit()
-    // Gateway should pre-check the subgraph to not pull on users that would fail
+    /**
+     * @dev Gateway pulls tokens from many users in the billing contract
+     * @param _users  Addresses that tokens are being pulled from
+     * @param _amounts  Amounts of tokens to pull from each user
+     */
     function pullDeposits(address[] calldata _users, uint256[] calldata _amounts) external override {
         require(_users.length == _amounts.length, "Lengths not equal");
         for (uint256 i = 0; i < _users.length; i++) {
