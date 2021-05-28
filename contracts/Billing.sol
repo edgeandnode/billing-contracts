@@ -8,7 +8,7 @@ import "./Governed.sol";
 
 /**
  * @title Billing Contract
- * @dev The billing contract allows for graph token to be deposited by a user, and for that token to
+ * @dev The billing contract allows for graph token to be added by a user, and for that token to
  * be pulled by a permissoned user named 'gateway'. It is owned and controlle by the 'governor'.
  */
 
@@ -16,7 +16,7 @@ contract Billing is IBilling, Governed {
     IERC20 private immutable graphToken;
     address public gateway;
 
-    // user address --> user deposited tokens
+    // user address --> user tokens
     mapping(address => uint256) public users;
 
     /**
@@ -54,63 +54,63 @@ contract Billing is IBilling, Governed {
     }
 
     /**
-     * @dev Deposit tokens into the billing contract
-     * @param _amount  Amount of tokens to deposit
+     * @dev Add tokens into the billing contract
+     * @param _amount  Amount of tokens to add
      */
-    function deposit(uint256 _amount) external override {
-        _deposit(msg.sender, msg.sender, _amount);
+    function add(uint256 _amount) external override {
+        _add(msg.sender, msg.sender, _amount);
     }
 
     /**
-     * @dev Deposit tokens into the billing contract for any user
-     * @param _to  Address that tokens are being deposited to
-     * @param _amount  Amount of tokens to deposit
+     * @dev Add tokens into the billing contract for any user
+     * @param _to  Address that tokens are being added to
+     * @param _amount  Amount of tokens to add
      */
-    function depositTo(address _to, uint256 _amount) external override {
-        _deposit(msg.sender, _to, _amount);
+    function addTo(address _to, uint256 _amount) external override {
+        _add(msg.sender, _to, _amount);
     }
 
     /**
-     * @dev Deposit tokens into the billing contract
+     * @dev Add tokens into the billing contract
      * @param _from  Address that is sending tokens
-     * @param _user  User that is getting an increase in their deposit
-     * @param _amount  Amount of tokens to deposit
+     * @param _user  User that is adding tokens
+     * @param _amount  Amount of tokens to add
      */
-    function _deposit(
+    function _add(
         address _from,
         address _user,
         uint256 _amount
     ) private {
         require(graphToken.transferFrom(_from, address(this), _amount));
         users[_user] = users[_user] + _amount;
-        emit Deposit(_user, _amount);
+        emit Add(_user, _amount);
     }
 
     /**
-     * @dev Withdraw tokens from the billing contract
-     * @param _to  Address that tokens are being withdrawn to
-     * @param _amount  Amount of tokens to withdraw
+     * @dev Remove tokens from the billing contract
+     * @param _to  Address that tokens are being removed from
+     * @param _amount  Amount of tokens to remove
      */
-    function withdraw(address _to, uint256 _amount) external override {
-        require(users[msg.sender] >= _amount, "Too much withdrawn");
+    function remove(address _to, uint256 _amount) external override {
+        require(users[msg.sender] >= _amount, "Too much removed");
         users[msg.sender] = users[msg.sender] - _amount;
-        require(graphToken.transfer(_to, _amount), "Withdraw transfer failed");
-        emit Withdraw(msg.sender, _to, _amount);
+        require(graphToken.transfer(_to, _amount), "Remove transfer failed");
+        emit Remove(msg.sender, _to, _amount);
     }
 
     // TODO - research if this is feasible. It should be
-    // function withdrawToL1(uint256 _amount) external override  {}
+    // function removeToL1(uint256 _amount) external override  {}
 
     /**
      * @dev Gateway pulls tokens from the billing contract
      * @param _user  Address that tokens are being pulled from
      * @param _amount  Amount of tokens to pull
      */
-    function pullDeposit(address _user, uint256 _amount) public override onlyGateway {
+    function pull(address _user, uint256 _amount) public override onlyGateway {
         require(users[_user] >= _amount, "Too much pulled");
         users[_user] = users[_user] - _amount;
         require(graphToken.transfer(gateway, _amount), "Pull transfer failed");
-        emit DepositPulled(_user, _amount);
+        emit Pulled(_user, _amount);
     }
 
     /**
@@ -118,10 +118,10 @@ contract Billing is IBilling, Governed {
      * @param _users  Addresses that tokens are being pulled from
      * @param _amounts  Amounts of tokens to pull from each user
      */
-    function pullDeposits(address[] calldata _users, uint256[] calldata _amounts) external override {
+    function pullMany(address[] calldata _users, uint256[] calldata _amounts) external override {
         require(_users.length == _amounts.length, "Lengths not equal");
         for (uint256 i = 0; i < _users.length; i++) {
-            pullDeposit(_users[i], _amounts[i]);
+            pull(_users[i], _amounts[i]);
         }
     }
 }

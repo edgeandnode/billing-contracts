@@ -47,94 +47,94 @@ describe('Billing', () => {
     await expect(tx).revertedWith('Only Governor can call')
   })
 
-  it('should deposit', async function () {
-    const beforeDeposit = await billing.users(user1.address)
+  it('should add', async function () {
+    const beforeAdd = await billing.users(user1.address)
     const beforeBalance = await token.balanceOf(user1.address)
 
-    const tx = billing.connect(user1.signer).deposit(oneHundred)
-    await expect(tx).emit(billing, 'Deposit').withArgs(user1.address, oneHundred)
+    const tx = billing.connect(user1.signer).add(oneHundred)
+    await expect(tx).emit(billing, 'Add').withArgs(user1.address, oneHundred)
 
-    const afterDeposit = await billing.users(user1.address)
+    const afterAdd = await billing.users(user1.address)
     const afterBalance = await token.balanceOf(user1.address)
-    expect(beforeDeposit.eq(afterDeposit.sub(oneHundred)))
+    expect(beforeAdd.eq(afterAdd.sub(oneHundred)))
     expect(beforeBalance.eq(afterBalance.sub(oneHundred)))
   })
 
-  it('should deposit to', async function () {
-    const beforeDeposit2 = await billing.users(user2.address)
+  it('should add to', async function () {
+    const beforeAdd2 = await billing.users(user2.address)
     const beforeBalance1 = await token.balanceOf(user1.address)
 
-    const tx = billing.connect(user1.signer).depositTo(user2.address, oneHundred)
-    await expect(tx).emit(billing, 'Deposit').withArgs(user2.address, oneHundred)
+    const tx = billing.connect(user1.signer).addTo(user2.address, oneHundred)
+    await expect(tx).emit(billing, 'Add').withArgs(user2.address, oneHundred)
 
-    const afterDeposit2 = await billing.users(user2.address)
+    const afterAdd2 = await billing.users(user2.address)
     const afterBalance1 = await token.balanceOf(user1.address)
-    expect(beforeDeposit2.eq(afterDeposit2.sub(oneHundred)))
+    expect(beforeAdd2.eq(afterAdd2.sub(oneHundred)))
     expect(beforeBalance1.eq(afterBalance1.sub(oneHundred)))
   })
 
-  it('should fail on deposit if no tokens held by user', async function () {
-    const tx = billing.connect(user3.signer).deposit(oneHundred)
+  it('should fail on add if no tokens held by user', async function () {
+    const tx = billing.connect(user3.signer).add(oneHundred)
     await expect(tx).revertedWith('transfer amount exceeds balance')
   })
 
-  it('should withdraw', async function () {
-    await billing.connect(user1.signer).deposit(oneHundred)
-    const beforeWithdraw = await billing.users(user1.address)
-    const tx = billing.connect(user1.signer).withdraw(user1.address, oneHundred)
-    await expect(tx).emit(billing, 'Withdraw').withArgs(user1.address, user1.address, oneHundred)
-    const afterWithdraw = await billing.users(user1.address)
-    expect(beforeWithdraw.eq(afterWithdraw.sub(oneHundred)))
+  it('should remove', async function () {
+    await billing.connect(user1.signer).add(oneHundred)
+    const beforeRemove = await billing.users(user1.address)
+    const tx = billing.connect(user1.signer).remove(user1.address, oneHundred)
+    await expect(tx).emit(billing, 'Remove').withArgs(user1.address, user1.address, oneHundred)
+    const afterRemove = await billing.users(user1.address)
+    expect(beforeRemove.eq(afterRemove.sub(oneHundred)))
   })
-  it('should fail on withdrawing too much', async function () {
-    await billing.connect(user1.signer).deposit(oneHundred)
-    const tx = billing.connect(user1.signer).withdraw(user1.address, oneMillion)
-    await expect(tx).revertedWith('Too much withdrawn')
+  it('should fail on removing too much', async function () {
+    await billing.connect(user1.signer).add(oneHundred)
+    const tx = billing.connect(user1.signer).remove(user1.address, oneMillion)
+    await expect(tx).revertedWith('Too much removed')
   })
-  it('should pull deposit', async function () {
+  it('should pull', async function () {
     const gatewayBalanceBefore = await token.balanceOf(gateway1.address)
-    const depositBefore = await billing.users(user1.address)
+    const addBefore = await billing.users(user1.address)
 
-    await billing.connect(user1.signer).deposit(oneHundred)
-    const tx = billing.connect(gateway1.signer).pullDeposit(user1.address, oneHundred)
-    await expect(tx).emit(billing, 'DepositPulled').withArgs(user1.address, oneHundred)
+    await billing.connect(user1.signer).add(oneHundred)
+    const tx = billing.connect(gateway1.signer).pull(user1.address, oneHundred)
+    await expect(tx).emit(billing, 'Pulled').withArgs(user1.address, oneHundred)
 
     const gatewayBalanceAfter = await token.balanceOf(gateway1.address)
-    const depositAfter = await billing.users(user1.address)
+    const addAfter = await billing.users(user1.address)
     expect(gatewayBalanceBefore.eq(gatewayBalanceAfter.add(oneHundred)))
-    expect(depositBefore.eq(depositAfter.sub(oneHundred)))
+    expect(addBefore.eq(addAfter.sub(oneHundred)))
   })
-  it('should pull deposits', async function () {
-    await billing.connect(user1.signer).deposit(oneHundred)
-    await billing.connect(user2.signer).deposit(oneHundred)
-    const depositBefore1 = await billing.users(user1.address)
-    const depositBefore2 = await billing.users(user2.address)
+  it('should pull many', async function () {
+    await billing.connect(user1.signer).add(oneHundred)
+    await billing.connect(user2.signer).add(oneHundred)
+    const addBefore1 = await billing.users(user1.address)
+    const addBefore2 = await billing.users(user2.address)
     const gatewayBalanceBefore = await token.balanceOf(gateway1.address)
 
-    await billing.connect(gateway1.signer).pullDeposits([user1.address, user2.address], [oneHundred, oneHundred])
+    await billing.connect(gateway1.signer).pullMany([user1.address, user2.address], [oneHundred, oneHundred])
 
-    const depositAfter1 = await billing.users(user1.address)
-    const depositAfter2 = await billing.users(user2.address)
+    const addAfter1 = await billing.users(user1.address)
+    const addAfter2 = await billing.users(user2.address)
     const gatewayBalanceAfter = await token.balanceOf(gateway1.address)
 
     expect(gatewayBalanceBefore.eq(gatewayBalanceAfter.add(oneHundred).add(oneHundred)))
-    expect(depositBefore1.eq(depositAfter1.sub(oneHundred)))
-    expect(depositBefore2.eq(depositAfter2.sub(oneHundred)))
+    expect(addBefore1.eq(addAfter1.sub(oneHundred)))
+    expect(addBefore2.eq(addAfter2.sub(oneHundred)))
   })
-  it('should fail pull deposits on lengths not equal', async function () {
-    await billing.connect(user1.signer).deposit(oneHundred)
-    await billing.connect(user2.signer).deposit(oneHundred)
-    const tx = billing.connect(gateway1.signer).pullDeposits([user1.address], [oneHundred, oneHundred])
+  it('should fail pull on lengths not equal', async function () {
+    await billing.connect(user1.signer).add(oneHundred)
+    await billing.connect(user2.signer).add(oneHundred)
+    const tx = billing.connect(gateway1.signer).pullMany([user1.address], [oneHundred, oneHundred])
     await expect(tx).revertedWith('Lengths not equal')
   })
   it('should fail on pull when not gateway', async function () {
-    await billing.connect(user1.signer).deposit(oneHundred)
-    const tx = billing.connect(me.signer).pullDeposit(user1.address, oneHundred)
+    await billing.connect(user1.signer).add(oneHundred)
+    const tx = billing.connect(me.signer).pull(user1.address, oneHundred)
     await expect(tx).revertedWith('!gateway')
   })
   it('should fail too much pulled', async function () {
-    await billing.connect(user1.signer).deposit(oneHundred)
-    const tx = billing.connect(gateway1.signer).pullDeposit(user1.address, oneMillion)
+    await billing.connect(user1.signer).add(oneHundred)
+    const tx = billing.connect(gateway1.signer).pull(user1.address, oneMillion)
     await expect(tx).revertedWith('Too much pulled')
   })
 })
