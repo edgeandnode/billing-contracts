@@ -2,7 +2,7 @@ import { expect } from 'chai'
 import hre from 'hardhat'
 import '@nomiclabs/hardhat-ethers'
 
-import { Governed } from '../build/typechain/contracts/Governed'
+import { Governed } from '../build/types/Governed'
 
 import { getAccounts, Account } from './lib/testHelpers'
 
@@ -33,9 +33,7 @@ describe('Governed', () => {
     await expect(tx1).emit(governed, 'NewPendingOwnership').withArgs(AddressZero, me.address)
 
     // Reject accept if not the pending governor
-    await expect(governed.connect(governor.signer).acceptOwnership()).revertedWith(
-      'Caller must be pending governor',
-    )
+    await expect(governed.connect(governor.signer).acceptOwnership()).revertedWith('Caller must be pending governor')
 
     // Accept ownership
     const tx2 = governed.connect(me.signer).acceptOwnership()
