@@ -8,7 +8,7 @@ interface IBilling {
      */
     event TokensAdded(address indexed user, uint256 amount);
     /**
-     * @dev User removes tokens. If (to == address(L1_bridge)), removeToL1()was called
+     * @dev User removes tokens
      */
     event TokensRemoved(address indexed user, address indexed to, uint256 amount);
 
@@ -48,15 +48,12 @@ interface IBilling {
      */
     function remove(address _to, uint256 _amount) external;
 
-    // TODO - research if this is feasible. It should be
-    // function removeToL1(uint256 _amount) external {}
-
     /**
      * @dev Gateway pulls tokens from the billing contract
      * @param _user  Address that tokens are being pulled from
      * @param _amount  Amount of tokens to pull
      */
-    function pull(address _user, uint256 _amount) external; // onlyGateway modifier
+    function pull(address _user, uint256 _amount) external;
 
     /**
      * @dev Gateway pulls tokens from many users in the billing contract

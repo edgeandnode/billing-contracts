@@ -108,8 +108,7 @@ contract Billing is IBilling, Governed {
     }
 
     /**
-     * @dev Gateway pulls tokens from the billing contract. Uses Math.min() so that it won't fail
-     * in the event that a user withdraws in front of the gateway pulling
+     * @dev Gateway pulls tokens from the billing contract
      * @param _user  Address that tokens are being pulled from
      * @param _amount  Amount of tokens to pull
      */
