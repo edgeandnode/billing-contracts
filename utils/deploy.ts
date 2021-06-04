@@ -2,8 +2,8 @@ import { Contract, Signer, ContractFactory, utils } from 'ethers'
 
 import { logger } from './logging'
 import { loadArtifact } from './artifacts'
-import { Billing } from '../../build/types/Billing'
-import { Token } from '../../build/types/Token'
+import { Billing } from '../build/typechain/contracts/Billing'
+import { Token } from '../build/typechain/contracts/Token'
 
 const hash = (input: string): string => utils.keccak256(`0x${input.replace(/^0x/, '')}`)
 
@@ -42,4 +42,3 @@ export async function deployBilling(args: Array<any>, sender: Signer, disableLog
 export async function deployToken(args: Array<any>, sender: Signer, disableLogging?: boolean): Promise<Token> {
   return deployContract(args, sender, 'Token', disableLogging) as unknown as Promise<Token>
 }
-

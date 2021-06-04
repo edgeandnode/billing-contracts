@@ -4,7 +4,7 @@ import '@nomiclabs/hardhat-ethers'
 
 import { Governed } from '../build/types/Governed'
 
-import { getAccounts, Account } from './lib/testHelpers'
+import { getAccounts, Account } from '../utils/helpers'
 
 const { ethers } = hre
 const { AddressZero } = ethers.constants

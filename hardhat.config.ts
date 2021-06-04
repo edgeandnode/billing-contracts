@@ -1,4 +1,11 @@
-import { task } from 'hardhat/config'
+import path from 'path'
+import fs from 'fs'
+import * as dotenv from 'dotenv'
+
+import 'hardhat/types/runtime'
+import { networkDefaults } from './utils/defaults'
+
+// dotenv.config()
 
 // Plugins
 
@@ -7,6 +14,19 @@ import '@nomiclabs/hardhat-etherscan'
 import '@nomiclabs/hardhat-waffle'
 import '@typechain/hardhat'
 import 'hardhat-abi-exporter'
+
+const SKIP_LOAD = process.env.SKIP_LOAD === 'true'
+
+if (!SKIP_LOAD) {
+  ;['deployment'].forEach((folder) => {
+    const tasksPath = path.join(__dirname, 'tasks', folder)
+    fs.readdirSync(tasksPath)
+      .filter((pth) => pth.includes('.ts'))
+      .forEach((task) => {
+        require(`${tasksPath}/${task}`)
+      })
+  })
+}
 
 // Networks
 
@@ -19,15 +39,17 @@ interface NetworkConfig {
 }
 
 const networkConfigs: NetworkConfig[] = [
-  { network: 'polygon', chainId: 137 },
-  { network: 'mumbai', chainId: 80001 },
+  { network: 'mainnet', chainId: 1 },
+  { network: 'goerli', chainId: 5 },
+  { network: 'matic', chainId: 137, url: 'https://rpc-mainnet.maticvigil.com' },
+  { network: 'mumbai', chainId: 80001, url: 'https://rpc-mumbai.maticvigil.com' },
 ]
 
 function getAccountMnemonic() {
   return process.env.MNEMONIC || ''
 }
 
-function getDefaultProviderURL(network: string) {
+function getProviderURL(network: string) {
   return `https://${network}.infura.io/v3/${process.env.INFURA_KEY}`
 }
 
@@ -35,7 +57,7 @@ function setupNetworkConfig(config) {
   for (const netConfig of networkConfigs) {
     config.networks[netConfig.network] = {
       chainId: netConfig.chainId,
-      url: netConfig.url ? netConfig.url : getDefaultProviderURL(netConfig.network),
+      url: netConfig.url ? netConfig.url : getProviderURL(netConfig.network),
       gas: netConfig.gas || 'auto',
       gasPrice: netConfig.gasPrice || 'auto',
       accounts: {
@@ -69,14 +91,16 @@ const config = {
       gas: 11000000,
       gasPrice: 'auto',
       blockGasLimit: 12000000,
+      accounts: {
+        mnemonic: networkDefaults.mnemonic,
+      },
     },
     ganache: {
       chainId: 1337,
-      url: 'http://localhost:8545',
+      url: networkDefaults.providerUrl,
     },
   },
   etherscan: {
-    url: process.env.ETHERSCAN_API_URL,
     apiKey: process.env.ETHERSCAN_API_KEY,
   },
   abiExporter: {
