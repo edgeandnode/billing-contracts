@@ -5,6 +5,7 @@ import { task } from 'hardhat/config'
 import '@nomiclabs/hardhat-ethers'
 import '@nomiclabs/hardhat-etherscan'
 import '@nomiclabs/hardhat-waffle'
+import '@typechain/hardhat'
 import 'hardhat-abi-exporter'
 
 // Networks
@@ -18,11 +19,8 @@ interface NetworkConfig {
 }
 
 const networkConfigs: NetworkConfig[] = [
-  { network: 'mainnet', chainId: 1 },
-  { network: 'ropsten', chainId: 3 },
-  { network: 'rinkeby', chainId: 4 },
-  { network: 'kovan', chainId: 42 },
-  // TODO - add mumbai and matic main
+  { network: 'polygon', chainId: 137 },
+  { network: 'mumbai', chainId: 80001 },
 ]
 
 function getAccountMnemonic() {
@@ -47,15 +45,6 @@ function setupNetworkConfig(config) {
   }
 }
 
-// Tasks
-
-task('accounts', 'Prints the list of accounts', async (taskArgs, hre) => {
-  const accounts = await hre.ethers.getSigners()
-  for (const account of accounts) {
-    console.log(await account.getAddress())
-  }
-})
-
 // Config
 
 const config = {
@@ -66,7 +55,7 @@ const config = {
     artifacts: './build/artifacts',
   },
   solidity: {
-    version: '0.7.3',
+    version: '0.8.4',
     optimizer: {
       enabled: true,
       runs: 200,
@@ -93,6 +82,10 @@ const config = {
   abiExporter: {
     path: './build/abis',
     clear: true,
+  },
+  typechain: {
+    outDir: 'build/types',
+    target: 'ethers-v5',
   },
 }
 
