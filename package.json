@@ -22,7 +22,7 @@
     "prettier:sol": "prettier --write 'contracts/*.sol'",
     "security": "scripts/security",
     "flatten": "scripts/flatten",
-    "typechain": "typechain --target ethers-v5 --out-dir build/typechain/contracts 'build/abis/**/*.json'",
+    "typechain": "hardhat typechain",
     "verify": "hardhat verify"
   },
   "files": [
@@ -64,6 +64,7 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^4.1.0",
+    "@typechain/hardhat": "^2.0.1",
     "consola": "^2.15.3"
   }
 }

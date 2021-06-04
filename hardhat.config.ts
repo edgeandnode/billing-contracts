@@ -5,6 +5,7 @@ import { task } from 'hardhat/config'
 import '@nomiclabs/hardhat-ethers'
 import '@nomiclabs/hardhat-etherscan'
 import '@nomiclabs/hardhat-waffle'
+import '@typechain/hardhat'
 import 'hardhat-abi-exporter'
 
 // Networks
@@ -81,6 +82,10 @@ const config = {
   abiExporter: {
     path: './build/abis',
     clear: true,
+  },
+  typechain: {
+    outDir: 'build/types',
+    target: 'ethers-v5',
   },
 }
 

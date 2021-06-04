@@ -1,8 +1,9 @@
 import { expect } from 'chai'
 import * as deployment from './lib/deployment'
 import { getAccounts, Account, toGRT } from './lib/testHelpers'
-import { Billing } from '../build/typechain/contracts/Billing'
-import { Token } from '../build/typechain/contracts/Token'
+
+import { Billing } from '../build/types/Billing'
+import { Token } from '../build/types/Token'
 
 describe('Billing', () => {
   let me: Account
