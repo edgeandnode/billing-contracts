@@ -5,27 +5,23 @@ import { loadArtifact } from './artifacts'
 import { Billing } from '../../build/typechain/contracts/Billing'
 import { Token } from '../../build/typechain/contracts/Token'
 
-// Disable logging for tests
-logger.pause()
-
 const hash = (input: string): string => utils.keccak256(`0x${input.replace(/^0x/, '')}`)
 
-type DeployResult = {
-  // TODO - might not need
-  contract: Contract
-  creationCodeHash: string
-  runtimeCodeHash: string
-  txHash: string
-}
+async function deployContract(
+  args: Array<any>,
+  sender: Signer,
+  name: string,
+  disableLogging?: boolean,
+): Promise<Contract> {
+  // Disable logging for tests
+  if (disableLogging) logger.pause()
 
-export async function deployContract(args: Array<any>, sender: Signer, name: string): Promise<Contract> {
   // Deploy
   const artifact = loadArtifact(name)
   const factory = new ContractFactory(artifact.abi, artifact.bytecode)
   const contract = await factory.connect(sender).deploy(...args)
   const txHash = contract.deployTransaction.hash
   logger.log(`> Deploy ${name}, txHash: ${txHash}`)
-  await sender.provider.waitForTransaction(txHash)
 
   // Receipt
   const creationCodeHash = hash(factory.bytecode)
@@ -34,13 +30,16 @@ export async function deployContract(args: Array<any>, sender: Signer, name: str
   logger.log('= RuntimeCodeHash: ', runtimeCodeHash)
   logger.success(`${name} has been deployed to address: ${contract.address}`)
 
-  return contract as unknown as Promise<Billing>
+  return contract as unknown as Promise<Contract>
 }
 
-export async function deployBilling(args: Array<any>, sender: Signer): Promise<Billing> {
-  return deployContract(args, sender, 'Billing') as unknown as Promise<Billing>
+// Pass the args in order to this func
+export async function deployBilling(args: Array<any>, sender: Signer, disableLogging?: boolean): Promise<Billing> {
+  return deployContract(args, sender, 'Billing', disableLogging) as unknown as Promise<Billing>
 }
 
-export async function deployToken(args: Array<any>, sender: Signer): Promise<Token> {
-  return deployContract(args, sender, 'Token') as unknown as Promise<Token>
+// Pass the args in order to this func
+export async function deployToken(args: Array<any>, sender: Signer, disableLogging?: boolean): Promise<Token> {
+  return deployContract(args, sender, 'Token', disableLogging) as unknown as Promise<Token>
 }
+

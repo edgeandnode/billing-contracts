@@ -1,7 +1,6 @@
 import { expect } from 'chai'
 import * as deployment from './lib/deployment'
 import { getAccounts, Account, toGRT } from './lib/testHelpers'
-
 import { Billing } from '../build/typechain/contracts/Billing'
 import { Token } from '../build/typechain/contracts/Token'
 
@@ -27,8 +26,8 @@ describe('Billing', () => {
   const oneMillion = toGRT('1000000')
 
   beforeEach(async function () {
-    token = await deployment.deployToken([tenBillion], me.signer)
-    billing = await deployment.deployBilling([gateway1.address, token.address, governor.address], me.signer)
+    token = await deployment.deployToken([tenBillion], me.signer, true)
+    billing = await deployment.deployBilling([gateway1.address, token.address, governor.address], me.signer, true)
     await token.connect(me.signer).transfer(user1.address, oneMillion)
     await token.connect(me.signer).transfer(user2.address, oneMillion)
     await token.connect(user1.signer).approve(billing.address, oneMillion)
@@ -48,29 +47,42 @@ describe('Billing', () => {
   })
 
   it('should add', async function () {
-    const beforeAdd = await billing.users(user1.address)
+    const beforeAdd = await billing.userBalances(user1.address)
     const beforeBalance = await token.balanceOf(user1.address)
 
     const tx = billing.connect(user1.signer).add(oneHundred)
-    await expect(tx).emit(billing, 'Add').withArgs(user1.address, oneHundred)
+    await expect(tx).emit(billing, 'TokensAdded').withArgs(user1.address, oneHundred)
 
-    const afterAdd = await billing.users(user1.address)
+    const afterAdd = await billing.userBalances(user1.address)
     const afterBalance = await token.balanceOf(user1.address)
     expect(beforeAdd.eq(afterAdd.sub(oneHundred)))
     expect(beforeBalance.eq(afterBalance.sub(oneHundred)))
   })
 
   it('should add to', async function () {
-    const beforeAdd2 = await billing.users(user2.address)
+    const beforeAdd2 = await billing.userBalances(user2.address)
     const beforeBalance1 = await token.balanceOf(user1.address)
 
     const tx = billing.connect(user1.signer).addTo(user2.address, oneHundred)
-    await expect(tx).emit(billing, 'Add').withArgs(user2.address, oneHundred)
+    await expect(tx).emit(billing, 'TokensAdded').withArgs(user2.address, oneHundred)
 
-    const afterAdd2 = await billing.users(user2.address)
+    const afterAdd2 = await billing.userBalances(user2.address)
     const afterBalance1 = await token.balanceOf(user1.address)
     expect(beforeAdd2.eq(afterAdd2.sub(oneHundred)))
     expect(beforeBalance1.eq(afterBalance1.sub(oneHundred)))
+  })
+
+  it('should fail on built in solidity 0.8 safe math', async function () {
+    const beforeAdd = await billing.userBalances(user1.address)
+    const beforeBalance = await token.balanceOf(user1.address)
+
+    const tx = billing.connect(user1.signer).add(oneHundred)
+    await expect(tx).emit(billing, 'TokensAdded').withArgs(user1.address, oneHundred)
+
+    const afterAdd = await billing.userBalances(user1.address)
+    const afterBalance = await token.balanceOf(user1.address)
+    expect(beforeAdd.eq(afterAdd.sub(oneHundred)))
+    expect(beforeBalance.eq(afterBalance.sub(oneHundred)))
   })
 
   it('should fail on add if no tokens held by user', async function () {
@@ -80,10 +92,10 @@ describe('Billing', () => {
 
   it('should remove', async function () {
     await billing.connect(user1.signer).add(oneHundred)
-    const beforeRemove = await billing.users(user1.address)
+    const beforeRemove = await billing.userBalances(user1.address)
     const tx = billing.connect(user1.signer).remove(user1.address, oneHundred)
-    await expect(tx).emit(billing, 'Remove').withArgs(user1.address, user1.address, oneHundred)
-    const afterRemove = await billing.users(user1.address)
+    await expect(tx).emit(billing, 'TokensRemoved').withArgs(user1.address, user1.address, oneHundred)
+    const afterRemove = await billing.userBalances(user1.address)
     expect(beforeRemove.eq(afterRemove.sub(oneHundred)))
   })
   it('should fail on removing too much', async function () {
@@ -93,28 +105,28 @@ describe('Billing', () => {
   })
   it('should pull', async function () {
     const gatewayBalanceBefore = await token.balanceOf(gateway1.address)
-    const addBefore = await billing.users(user1.address)
+    const addBefore = await billing.userBalances(user1.address)
 
     await billing.connect(user1.signer).add(oneHundred)
     const tx = billing.connect(gateway1.signer).pull(user1.address, oneHundred)
-    await expect(tx).emit(billing, 'Pulled').withArgs(user1.address, oneHundred)
+    await expect(tx).emit(billing, 'TokensPulled').withArgs(user1.address, oneHundred)
 
     const gatewayBalanceAfter = await token.balanceOf(gateway1.address)
-    const addAfter = await billing.users(user1.address)
+    const addAfter = await billing.userBalances(user1.address)
     expect(gatewayBalanceBefore.eq(gatewayBalanceAfter.add(oneHundred)))
     expect(addBefore.eq(addAfter.sub(oneHundred)))
   })
   it('should pull many', async function () {
     await billing.connect(user1.signer).add(oneHundred)
     await billing.connect(user2.signer).add(oneHundred)
-    const addBefore1 = await billing.users(user1.address)
-    const addBefore2 = await billing.users(user2.address)
+    const addBefore1 = await billing.userBalances(user1.address)
+    const addBefore2 = await billing.userBalances(user2.address)
     const gatewayBalanceBefore = await token.balanceOf(gateway1.address)
 
     await billing.connect(gateway1.signer).pullMany([user1.address, user2.address], [oneHundred, oneHundred])
 
-    const addAfter1 = await billing.users(user1.address)
-    const addAfter2 = await billing.users(user2.address)
+    const addAfter1 = await billing.userBalances(user1.address)
+    const addAfter2 = await billing.userBalances(user2.address)
     const gatewayBalanceAfter = await token.balanceOf(gateway1.address)
 
     expect(gatewayBalanceBefore.eq(gatewayBalanceAfter.add(oneHundred).add(oneHundred)))
@@ -131,10 +143,5 @@ describe('Billing', () => {
     await billing.connect(user1.signer).add(oneHundred)
     const tx = billing.connect(me.signer).pull(user1.address, oneHundred)
     await expect(tx).revertedWith('!gateway')
-  })
-  it('should fail too much pulled', async function () {
-    await billing.connect(user1.signer).add(oneHundred)
-    const tx = billing.connect(gateway1.signer).pull(user1.address, oneMillion)
-    await expect(tx).revertedWith('Too much pulled')
   })
 })

@@ -3,13 +3,14 @@
 pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "./IBilling.sol";
 import "./Governed.sol";
 
 /**
  * @title Billing Contract
- * @dev The billing contract allows for graph token to be added by a user, and for that token to
- * be pulled by a permissoned user named 'gateway'. It is owned and controlle by the 'governor'.
+ * @dev The billing contract allows for Graph Tokens to be added by a user. The token can then
+ * be pulled by a permissoned user named 'gateway'. It is owned and controlled by the 'governor'.
  */
 
 contract Billing is IBilling, Governed {
@@ -17,7 +18,7 @@ contract Billing is IBilling, Governed {
     address public gateway;
 
     // user address --> user tokens
-    mapping(address => uint256) public users;
+    mapping(address => uint256) public userBalances;
 
     /**
      * @dev Constructor function
@@ -31,9 +32,8 @@ contract Billing is IBilling, Governed {
         address _governor
     ) {
         Governed._initialize(_governor);
-        gateway = _gateway;
+        _setGateway(_gateway);
         graphToken = _token;
-        emit GatewayUpdated(_gateway);
     }
 
     /**
@@ -49,8 +49,17 @@ contract Billing is IBilling, Governed {
      * @param _newGateway  New gateway address
      */
     function setGateway(address _newGateway) external override onlyGovernor {
+        _setGateway(_newGateway);
+    }
+
+    /**
+     * @dev Set the new gateway address
+     * @param _newGateway  New gateway address
+     */
+    function _setGateway(address _newGateway) internal {
+        require(_newGateway != address(0), "gateway != 0");
         gateway = _newGateway;
-        emit GatewayUpdated(_newGateway);
+        emit GatewayUpdated(gateway);
     }
 
     /**
@@ -81,36 +90,34 @@ contract Billing is IBilling, Governed {
         address _user,
         uint256 _amount
     ) private {
-        require(graphToken.transferFrom(_from, address(this), _amount));
-        users[_user] = users[_user] + _amount;
-        emit Add(_user, _amount);
+        require(graphToken.transferFrom(_from, address(this), _amount), "Add transfer failed");
+        userBalances[_user] = userBalances[_user] + _amount;
+        emit TokensAdded(_user, _amount);
     }
 
     /**
      * @dev Remove tokens from the billing contract
-     * @param _to  Address that tokens are being removed from
+     * @param _user  Address that tokens are being removed from
      * @param _amount  Amount of tokens to remove
      */
-    function remove(address _to, uint256 _amount) external override {
-        require(users[msg.sender] >= _amount, "Too much removed");
-        users[msg.sender] = users[msg.sender] - _amount;
-        require(graphToken.transfer(_to, _amount), "Remove transfer failed");
-        emit Remove(msg.sender, _to, _amount);
+    function remove(address _user, uint256 _amount) external override {
+        require(userBalances[msg.sender] >= _amount, "Too much removed");
+        userBalances[msg.sender] = userBalances[msg.sender] - _amount;
+        require(graphToken.transfer(_user, _amount), "Remove transfer failed");
+        emit TokensRemoved(msg.sender, _user, _amount);
     }
 
-    // TODO - research if this is feasible. It should be
-    // function removeToL1(uint256 _amount) external override  {}
-
     /**
-     * @dev Gateway pulls tokens from the billing contract
+     * @dev Gateway pulls tokens from the billing contract. Uses Math.min() so that it won't fail
+     * in the event that a user withdraws in front of the gateway pulling
      * @param _user  Address that tokens are being pulled from
      * @param _amount  Amount of tokens to pull
      */
-    function pull(address _user, uint256 _amount) public override onlyGateway {
-        require(users[_user] >= _amount, "Too much pulled");
-        users[_user] = users[_user] - _amount;
-        require(graphToken.transfer(gateway, _amount), "Pull transfer failed");
-        emit Pulled(_user, _amount);
+    function pull(address _user, uint256 _amount) external override onlyGateway {
+        uint256 maxAmount = _pull(_user, _amount);
+        if (maxAmount > 0) {
+            require(graphToken.transfer(gateway, maxAmount), "Pull transfer failed");
+        }
     }
 
     /**
@@ -118,10 +125,30 @@ contract Billing is IBilling, Governed {
      * @param _users  Addresses that tokens are being pulled from
      * @param _amounts  Amounts of tokens to pull from each user
      */
-    function pullMany(address[] calldata _users, uint256[] calldata _amounts) external override {
+    function pullMany(address[] calldata _users, uint256[] calldata _amounts) external override onlyGateway {
         require(_users.length == _amounts.length, "Lengths not equal");
+        uint256 totalPulled;
         for (uint256 i = 0; i < _users.length; i++) {
-            pull(_users[i], _amounts[i]);
+            uint256 userMax = _pull(_users[i], _amounts[i]);
+            totalPulled = totalPulled + userMax;
         }
+        if (totalPulled > 0) {
+            require(graphToken.transfer(gateway, totalPulled), "Pull Many transfer failed");
+        }
+    }
+
+    /**
+     * @dev Gateway pulls tokens from the billing contract. Uses Math.min() so that it won't fail
+     * in the event that a user withdraws in front of the gateway pulling
+     * @param _user  Address that tokens are being pulled from
+     * @param _amount  Amount of tokens to pull
+     */
+    function _pull(address _user, uint256 _amount) internal returns (uint256) {
+        uint256 maxAmount = Math.min(_amount, userBalances[_user]);
+        if (maxAmount > 0) {
+            userBalances[_user] = userBalances[_user] - _amount;
+            emit TokensPulled(_user, _amount);
+        }
+        return maxAmount;
     }
 }
