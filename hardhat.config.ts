@@ -3,9 +3,9 @@ import fs from 'fs'
 import * as dotenv from 'dotenv'
 
 import 'hardhat/types/runtime'
-import { networkDefaults } from './utils/defaults'
+import { networkConfig } from './utils/config'
 
-// dotenv.config()
+dotenv.config()
 
 // Plugins
 
@@ -14,6 +14,7 @@ import '@nomiclabs/hardhat-etherscan'
 import '@nomiclabs/hardhat-waffle'
 import '@typechain/hardhat'
 import 'hardhat-abi-exporter'
+import './tasks/extendContracts'
 
 const SKIP_LOAD = process.env.SKIP_LOAD === 'true'
 
@@ -92,12 +93,12 @@ const config = {
       gasPrice: 'auto',
       blockGasLimit: 12000000,
       accounts: {
-        mnemonic: networkDefaults.mnemonic,
+        mnemonic: networkConfig.mnemonic,
       },
     },
     ganache: {
       chainId: 1337,
-      url: networkDefaults.providerUrl,
+      url: networkConfig.providerUrl,
     },
   },
   etherscan: {

@@ -65,6 +65,7 @@
   "dependencies": {
     "@openzeppelin/contracts": "^4.1.0",
     "@typechain/hardhat": "^2.0.1",
-    "consola": "^2.15.3"
+    "consola": "^2.15.3",
+    "dotenv": "^10.0.0"
   }
 }
