@@ -1,6 +1,6 @@
 import { expect } from 'chai'
-import * as deployment from './lib/deployment'
-import { getAccounts, Account, toGRT } from './lib/testHelpers'
+import * as deployment from '../utils/deploy'
+import { getAccounts, Account, toGRT } from '../utils/helpers'
 
 import { Billing } from '../build/types/Billing'
 import { Token } from '../build/types/Token'
