@@ -23,4 +23,5 @@ jobs:
       - run: yarn install --non-interactive --frozen-lockfile
         env:
           NODE_AUTH_TOKEN: ${{secrets.npm_token}}
+      - run: yarn build
       - run: yarn test
