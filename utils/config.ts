@@ -7,9 +7,9 @@ export const networkConfig = {
 export const deployConfig = {
   billing: {
     params: {
-      tokenAddress: 'todo',
-      gatewayAddress: 'Todo',
-      governor: 'todo',
+      tokenAddress: '0x5fe2B58c013d7601147DcdD68C143A77499f5531',
+      gatewayAddress: 'TODO - set for mainnet ready ',
+      governor: 'TODO - set for mainnet when ready',
     },
     description: 'Deploy the billing contract',
   },
@@ -28,9 +28,9 @@ export const deployConfig = {
   mainnet: {
     ethereumGRT: '0xc944e90c64b2c07662a292be6244bdf05cda44a7',
     ethereumMaticERC20: '0x7d1afa7b718fb893db30a3abc0cfc608aacfebb0',
-    ethereumMATICBridge: '', // todo
-    ethereumERC20Bridge: '', // todo
+    ethereumMATICBridge: '0x401F6c983eA34274ec46f84D70b31C151321188b',
+    ethereumERC20Bridge: '0xA0c68C638235ee32657e8f720a23ceC1bFc77C77',
     maticGRT: '0x5fe2B58c013d7601147DcdD68C143A77499f5531',
-    maticBilling: '',
+    maticBilling: '0x5DE9A13C486f5aA12F4D8e5E77246F6E24dac274',
   },
 }

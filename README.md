@@ -31,3 +31,20 @@ will get Polygon GRT on the Polygon chain.
 - Users will have to get MATIC to pay for transaction fees on the Polygon network.
 - If the User ever wants to move their Polygon GRT back to Ethereum, they must use the reverse bridge,
 which has about a 3 hour waiting time.
+
+## Testing in Prod
+Here is how to use hardhat to quickly do some transactions:
+
+```bash
+npx hardhat console --network mumbai
+
+accounts = await ethers.getSigners()
+token = await hre.contracts.Token.connect(accounts[0])
+await token.approve('0x5DE9A13C486f5aA12F4D8e5E77246F6E24dac274', '1000000000000000000000')
+
+billing = await hre.contracts.Billing.connect(accounts[0])
+await billing.setGateway('0x93606b27cB5e4c780883eC4F6b7Bed5f6572d1dd')
+await billing.add('1000000000000000000')
+await billing.remove('0x93606b27cB5e4c780883eC4F6b7Bed5f6572d1dd','500000000000000000')
+await billing.pull('0x93606b27cB5e4c780883eC4F6b7Bed5f6572d1dd', '500000000000000000')
+```
