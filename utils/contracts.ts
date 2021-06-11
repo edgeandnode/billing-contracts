@@ -1,8 +1,8 @@
 import { providers, Signer, Contract } from 'ethers'
 import { logger } from './logging'
 import { loadArtifact } from './artifacts'
-import { Billing } from '../build/typechain/contracts/Billing'
-import { Token } from '../build/typechain/contracts/Token'
+import { Billing } from '../build/types/Billing'
+import { Token } from '../build/types/Token'
 
 export interface BillingContracts {
   Billing: Billing
