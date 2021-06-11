@@ -5,6 +5,7 @@ import '@nomiclabs/hardhat-ethers'
 
 import { deployBilling } from '../../utils/deploy'
 import { deployConfig } from '../../utils/config'
+import '../extendContracts'
 
 task('deployBilling', deployConfig.billing.description)
   .addParam('token', 'Address of the token', deployConfig.billing.params.tokenAddress)

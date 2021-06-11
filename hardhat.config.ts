@@ -14,7 +14,6 @@ import '@nomiclabs/hardhat-etherscan'
 import '@nomiclabs/hardhat-waffle'
 import '@typechain/hardhat'
 import 'hardhat-abi-exporter'
-import './tasks/extendContracts'
 
 const SKIP_LOAD = process.env.SKIP_LOAD === 'true'
 
@@ -74,7 +73,6 @@ const config = {
   paths: {
     sources: './contracts',
     tests: './test',
-    cache: './cache',
     artifacts: './build/artifacts',
   },
   solidity: {

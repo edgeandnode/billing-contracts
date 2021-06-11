@@ -5,6 +5,7 @@ import '@nomiclabs/hardhat-ethers'
 
 import { deployToken } from '../../utils/deploy'
 import { deployConfig } from '../../utils/config'
+import '../extendContracts'
 
 task('deployToken', deployConfig.token.description)
   .addParam('totalSupply', 'Total supply of the token', deployConfig.token.totalSupply)

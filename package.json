@@ -5,8 +5,8 @@
   "main": "index.js",
   "scripts": {
     "prepublishOnly": "scripts/prepublish",
-    "build": "scripts/build",
-    "clean": "rm -rf build/ cache/ dist/ && hardhat clean",
+    "build": "SKIP_LOAD=true scripts/build",
+    "clean": "rm -rf build/ cache/ dist/",
     "compile": "hardhat compile",
     "test": "scripts/test",
     "test:gas": "RUN_EVM=true REPORT_GAS=true scripts/test",
@@ -60,9 +60,7 @@
     "prettier-plugin-solidity": "^1.0.0-alpha.56",
     "ts-node": "^10.0.0",
     "typechain": "^5.0.0",
-    "typescript": "^4.0.2"
-  },
-  "dependencies": {
+    "typescript": "^4.0.2",
     "@openzeppelin/contracts": "^4.1.0",
     "@typechain/hardhat": "^2.0.1",
     "consola": "^2.15.3",
