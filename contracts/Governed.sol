@@ -9,12 +9,16 @@ pragma solidity ^0.8.4;
 contract Governed {
     // -- State --
 
+    // The address of the governor
     address public governor;
+    // The address of the pending governor
     address public pendingGovernor;
 
     // -- Events --
 
+    // Emit when the pendingGovernor state variable is updated
     event NewPendingOwnership(address indexed from, address indexed to);
+    // Emit when the governor state variable is updated
     event NewOwnership(address indexed from, address indexed to);
 
     /**
@@ -26,7 +30,7 @@ contract Governed {
     }
 
     /**
-     * @dev Initialize the governor to the contract caller.
+     * @dev Initialize the governor with the _initGovernor param.
      */
     function _initialize(address _initGovernor) internal {
         governor = _initGovernor;
@@ -51,10 +55,7 @@ contract Governed {
      * This function must called by the pending governor.
      */
     function acceptOwnership() external {
-        require(
-            pendingGovernor != address(0) && msg.sender == pendingGovernor,
-            "Caller must be pending governor"
-        );
+        require(pendingGovernor != address(0) && msg.sender == pendingGovernor, "Caller must be pending governor");
 
         address oldGovernor = governor;
         address oldPendingGovernor = pendingGovernor;

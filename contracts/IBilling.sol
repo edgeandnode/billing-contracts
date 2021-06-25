@@ -4,25 +4,6 @@ pragma solidity ^0.8.4;
 
 interface IBilling {
     /**
-     * @dev User adds tokens
-     */
-    event TokensAdded(address indexed user, uint256 amount);
-    /**
-     * @dev User removes tokens
-     */
-    event TokensRemoved(address indexed user, address indexed to, uint256 amount);
-
-    /**
-     * @dev Gateway pulled tokens from a user
-     */
-    event TokensPulled(address indexed user, uint256 amount);
-
-    /**
-     * @dev Gateway address updated
-     */
-    event GatewayUpdated(address indexed newGateway);
-
-    /**
      * @dev Set the new gateway address
      * @param _newGateway  New gateway address
      */
