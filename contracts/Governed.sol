@@ -29,6 +29,7 @@ contract Governed {
      * @dev Initialize the governor to the contract caller.
      */
     function _initialize(address _initGovernor) internal {
+        require(_initGovernor != address(0), "Governor must not be 0");
         governor = _initGovernor;
     }
 
