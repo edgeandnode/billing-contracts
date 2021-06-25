@@ -143,6 +143,6 @@ describe('Billing', () => {
   it('should fail on pull when not gateway', async function () {
     await billing.connect(user1.signer).add(oneHundred)
     const tx = billing.connect(me.signer).pull(user1.address, oneHundred)
-    await expect(tx).revertedWith('!gateway')
+    await expect(tx).revertedWith('Caller must be gateway')
   })
 })

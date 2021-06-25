@@ -30,8 +30,7 @@ contract Billing is IBilling, Governed {
         address _gateway,
         IERC20 _token,
         address _governor
-    ) {
-        Governed._initialize(_governor);
+    ) Governed(_governor) {
         _setGateway(_gateway);
         graphToken = _token;
     }
@@ -40,7 +39,7 @@ contract Billing is IBilling, Governed {
      * @dev Check if the caller is the gateway.
      */
     modifier onlyGateway() {
-        require(msg.sender == gateway, "!gateway");
+        require(msg.sender == gateway, "Caller must be gateway");
         _;
     }
 
@@ -57,7 +56,7 @@ contract Billing is IBilling, Governed {
      * @param _newGateway  New gateway address
      */
     function _setGateway(address _newGateway) internal {
-        require(_newGateway != address(0), "gateway != 0");
+        require(_newGateway != address(0), "Gateway cannot be 0");
         gateway = _newGateway;
         emit GatewayUpdated(gateway);
     }
