@@ -109,7 +109,7 @@ describe('Billing', () => {
     const addBefore = await billing.userBalances(user1.address)
 
     await billing.connect(user1.signer).add(oneHundred)
-    const tx = billing.connect(gateway1.signer).pull(user1.address, oneHundred)
+    const tx = billing.connect(gateway1.signer).pull(user1.address, oneHundred, gateway1.address)
     await expect(tx).emit(billing, 'TokensPulled').withArgs(user1.address, oneHundred)
 
     const gatewayBalanceAfter = await token.balanceOf(gateway1.address)
@@ -124,7 +124,7 @@ describe('Billing', () => {
     const addBefore2 = await billing.userBalances(user2.address)
     const gatewayBalanceBefore = await token.balanceOf(gateway1.address)
 
-    await billing.connect(gateway1.signer).pullMany([user1.address, user2.address], [oneHundred, oneHundred])
+    await billing.connect(gateway1.signer).pullMany([user1.address, user2.address], [oneHundred, oneHundred], gateway1.address)
 
     const addAfter1 = await billing.userBalances(user1.address)
     const addAfter2 = await billing.userBalances(user2.address)
@@ -137,12 +137,12 @@ describe('Billing', () => {
   it('should fail pull on lengths not equal', async function () {
     await billing.connect(user1.signer).add(oneHundred)
     await billing.connect(user2.signer).add(oneHundred)
-    const tx = billing.connect(gateway1.signer).pullMany([user1.address], [oneHundred, oneHundred])
+    const tx = billing.connect(gateway1.signer).pullMany([user1.address], [oneHundred, oneHundred], gateway1.address)
     await expect(tx).revertedWith('Lengths not equal')
   })
   it('should fail on pull when not gateway', async function () {
     await billing.connect(user1.signer).add(oneHundred)
-    const tx = billing.connect(me.signer).pull(user1.address, oneHundred)
+    const tx = billing.connect(me.signer).pull(user1.address, oneHundred, gateway1.address)
     await expect(tx).revertedWith('!gateway')
   })
 })

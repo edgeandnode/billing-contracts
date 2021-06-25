@@ -111,11 +111,16 @@ contract Billing is IBilling, Governed {
      * @dev Gateway pulls tokens from the billing contract
      * @param _user  Address that tokens are being pulled from
      * @param _amount  Amount of tokens to pull
+     * @param _to Destination to send pulled tokens
      */
-    function pull(address _user, uint256 _amount) external override onlyGateway {
+    function pull(
+        address _user,
+        uint256 _amount,
+        address _to
+    ) external override onlyGateway {
         uint256 maxAmount = _pull(_user, _amount);
         if (maxAmount > 0) {
-            require(graphToken.transfer(gateway, maxAmount), "Pull transfer failed");
+            require(graphToken.transfer(_to, maxAmount), "Pull transfer failed");
         }
     }
 
@@ -123,8 +128,13 @@ contract Billing is IBilling, Governed {
      * @dev Gateway pulls tokens from many users in the billing contract
      * @param _users  Addresses that tokens are being pulled from
      * @param _amounts  Amounts of tokens to pull from each user
+     * @param _to Destination to send pulled tokens
      */
-    function pullMany(address[] calldata _users, uint256[] calldata _amounts) external override onlyGateway {
+    function pullMany(
+        address[] calldata _users,
+        uint256[] calldata _amounts,
+        address _to
+    ) external override onlyGateway {
         require(_users.length == _amounts.length, "Lengths not equal");
         uint256 totalPulled;
         for (uint256 i = 0; i < _users.length; i++) {
@@ -132,7 +142,7 @@ contract Billing is IBilling, Governed {
             totalPulled = totalPulled + userMax;
         }
         if (totalPulled > 0) {
-            require(graphToken.transfer(gateway, totalPulled), "Pull Many transfer failed");
+            require(graphToken.transfer(_to, totalPulled), "Pull Many transfer failed");
         }
     }
 
