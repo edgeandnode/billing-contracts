@@ -154,7 +154,7 @@ contract Billing is IBilling, Governed {
 
     /**
      * @dev Allows the Gateway to rescue any ERC20 tokens sent to this contract by accident
-     * @param _to  Address that tokens are being pulled from
+     * @param _to  Destination address to send the tokens
      * @param _token  Token address of the token that was accidentally sent to the contract
      * @param _amount  Amount of tokens to pull
      */
@@ -163,6 +163,8 @@ contract Billing is IBilling, Governed {
         address _token,
         uint256 _amount
     ) external onlyGateway {
+        require(_to != address(0), "Cannot send to address(0)");
+        require(_amount != 0, "Cannot rescue 0 tokens");
         IERC20 token = IERC20(_token);
         require(token.transfer(_to, _amount), "Rescue tokens failed");
         emit TokensRescued(_to, _token, _amount);
