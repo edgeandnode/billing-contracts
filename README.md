@@ -48,3 +48,26 @@ await billing.add('1000000000000000000')
 await billing.remove('0x93606b27cB5e4c780883eC4F6b7Bed5f6572d1dd','500000000000000000')
 await billing.pull('0x93606b27cB5e4c780883eC4F6b7Bed5f6572d1dd', '500000000000000000')
 ```
+
+## Deploy instructions
+To deploy, see these instructions:
+
+```
+npx hardhat deployBilling --network <NETWORK_NAME> \
+    --governor <GOVERNOR_ADDRESS> \
+    --gateway <GATEWAY_ADDRESS> \
+    --token <MATIC_GRT_ADDRESS> 
+```
+
+Then update the billing address in `/utils/config.ts`
+
+Then run:
+
+```
+npx hardhat verify --network <NETWORK_NAME> \
+    <GOVERNOR_ADDRESS> \
+    <GATEWAY_ADDRESS> \
+    <MATIC_GRT_ADDRESS> \
+    <NEW_DEPLOYED_ADDRESS>
+
+
