@@ -31,8 +31,10 @@ contract Governed {
 
     /**
      * @dev Initialize the governor with the _initGovernor param.
+     * @param _initGovernor Governor address
      */
-    function _initialize(address _initGovernor) internal {
+    constructor(address _initGovernor) {
+        require(_initGovernor != address(0), "Governor must not be 0");
         governor = _initGovernor;
     }
 

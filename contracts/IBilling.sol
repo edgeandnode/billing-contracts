@@ -33,13 +33,23 @@ interface IBilling {
      * @dev Gateway pulls tokens from the billing contract
      * @param _user  Address that tokens are being pulled from
      * @param _amount  Amount of tokens to pull
+     * @param _to Destination to send pulled tokens
      */
-    function pull(address _user, uint256 _amount) external;
+    function pull(
+        address _user,
+        uint256 _amount,
+        address _to
+    ) external;
 
     /**
      * @dev Gateway pulls tokens from many users in the billing contract
      * @param _users  Addresses that tokens are being pulled from
      * @param _amounts  Amounts of tokens to pull from each user
+     * @param _to Destination to send pulled tokens
      */
-    function pullMany(address[] calldata _users, uint256[] calldata _amounts) external;
+    function pullMany(
+        address[] calldata _users,
+        uint256[] calldata _amounts,
+        address _to
+    ) external;
 }

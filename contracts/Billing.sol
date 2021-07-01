@@ -10,7 +10,7 @@ import "./Governed.sol";
 /**
  * @title Billing Contract
  * @dev The billing contract allows for Graph Tokens to be added by a user. The token can then
- * be pulled by a permissoned user named 'gateway'. It is owned and controlled by the 'governor'.
+ * be pulled by a permissioned user named 'gateway'. It is owned and controlled by the 'governor'.
  */
 
 contract Billing is IBilling, Governed {
@@ -55,8 +55,7 @@ contract Billing is IBilling, Governed {
         address _gateway,
         IERC20 _token,
         address _governor
-    ) {
-        Governed._initialize(_governor);
+    ) Governed(_governor) {
         _setGateway(_gateway);
         graphToken = _token;
     }
@@ -65,7 +64,7 @@ contract Billing is IBilling, Governed {
      * @dev Check if the caller is the gateway.
      */
     modifier onlyGateway() {
-        require(msg.sender == gateway, "!gateway");
+        require(msg.sender == gateway, "Caller must be gateway");
         _;
     }
 
@@ -82,7 +81,7 @@ contract Billing is IBilling, Governed {
      * @param _newGateway  New gateway address
      */
     function _setGateway(address _newGateway) internal {
-        require(_newGateway != address(0), "gateway != 0");
+        require(_newGateway != address(0), "Gateway cannot be 0");
         gateway = _newGateway;
         emit GatewayUpdated(gateway);
     }
@@ -118,6 +117,8 @@ contract Billing is IBilling, Governed {
         address _user,
         uint256 _amount
     ) private {
+        require(_amount != 0, "Must add more than 0");
+        require(_user != address(0), "user != 0");
         require(graphToken.transferFrom(_from, address(this), _amount), "Add transfer failed");
         userBalances[_user] = userBalances[_user] + _amount;
         emit TokensAdded(_user, _amount);
@@ -129,6 +130,7 @@ contract Billing is IBilling, Governed {
      * @param _amount  Amount of tokens to remove
      */
     function remove(address _user, uint256 _amount) external override {
+        require(_amount != 0, "Must remove more than 0");
         require(userBalances[msg.sender] >= _amount, "Too much removed");
         userBalances[msg.sender] = userBalances[msg.sender] - _amount;
         require(graphToken.transfer(_user, _amount), "Remove transfer failed");
@@ -139,29 +141,35 @@ contract Billing is IBilling, Governed {
      * @dev Gateway pulls tokens from the billing contract
      * @param _user  Address that tokens are being pulled from
      * @param _amount  Amount of tokens to pull
+     * @param _to Destination to send pulled tokens
      */
-    function pull(address _user, uint256 _amount) external override onlyGateway {
+    function pull(
+        address _user,
+        uint256 _amount,
+        address _to
+    ) external override onlyGateway {
         uint256 maxAmount = _pull(_user, _amount);
-        if (maxAmount > 0) {
-            require(graphToken.transfer(gateway, maxAmount), "Pull transfer failed");
-        }
+        _sendTokens(_to, maxAmount);
     }
 
     /**
      * @dev Gateway pulls tokens from many users in the billing contract
      * @param _users  Addresses that tokens are being pulled from
      * @param _amounts  Amounts of tokens to pull from each user
+     * @param _to Destination to send pulled tokens
      */
-    function pullMany(address[] calldata _users, uint256[] calldata _amounts) external override onlyGateway {
+    function pullMany(
+        address[] calldata _users,
+        uint256[] calldata _amounts,
+        address _to
+    ) external override onlyGateway {
         require(_users.length == _amounts.length, "Lengths not equal");
         uint256 totalPulled;
         for (uint256 i = 0; i < _users.length; i++) {
             uint256 userMax = _pull(_users[i], _amounts[i]);
             totalPulled = totalPulled + userMax;
         }
-        if (totalPulled > 0) {
-            require(graphToken.transfer(gateway, totalPulled), "Pull Many transfer failed");
-        }
+        _sendTokens(_to, totalPulled);
     }
 
     /**
@@ -177,5 +185,34 @@ contract Billing is IBilling, Governed {
             emit TokensPulled(_user, _amount);
         }
         return maxAmount;
+    }
+
+     * @dev Allows the Gateway to rescue any ERC20 tokens sent to this contract by accident
+     * @param _to  Destination address to send the tokens
+     * @param _token  Token address of the token that was accidentally sent to the contract
+     * @param _amount  Amount of tokens to pull
+     */
+    function rescueTokens(
+        address _to,
+        address _token,
+        uint256 _amount
+    ) external onlyGateway {
+        require(_to != address(0), "Cannot send to address(0)");
+        require(_amount != 0, "Cannot rescue 0 tokens");
+        IERC20 token = IERC20(_token);
+        require(token.transfer(_to, _amount), "Rescue tokens failed");
+        emit TokensRescued(_to, _token, _amount);
+    }
+
+    /**
+     * @dev Send tokens to a destination account
+     * @param _to Address where to send tokens
+     * @param _amount Amount of tokens to send
+     */
+    function _sendTokens(address _to, uint256 _amount) internal {
+        if (_amount > 0) {
+            require(_to != address(0), "Cannot transfer to empty address");
+            require(graphToken.transfer(_to, _amount), "Token transfer failed");
+        }
     }
 }
