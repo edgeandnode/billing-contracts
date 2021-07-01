@@ -9,12 +9,16 @@ pragma solidity ^0.8.4;
 contract Governed {
     // -- State --
 
+    // The address of the governor
     address public governor;
+    // The address of the pending governor
     address public pendingGovernor;
 
     // -- Events --
 
+    // Emit when the pendingGovernor state variable is updated
     event NewPendingOwnership(address indexed from, address indexed to);
+    // Emit when the governor state variable is updated
     event NewOwnership(address indexed from, address indexed to);
 
     /**
@@ -26,8 +30,8 @@ contract Governed {
     }
 
     /**
-     * @dev Initialize the governor to the contract caller.
-     * @param _initGovernor  Governor address
+     * @dev Initialize the governor with the _initGovernor param.
+     * @param _initGovernor Governor address
      */
     constructor(address _initGovernor) {
         require(_initGovernor != address(0), "Governor must not be 0");

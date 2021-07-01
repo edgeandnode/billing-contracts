@@ -14,11 +14,36 @@ import "./Governed.sol";
  */
 
 contract Billing is IBilling, Governed {
+    // -- State --
+
+    // The contract for interacting with The Graph Token
     IERC20 private immutable graphToken;
+    // The gateway address
     address public gateway;
 
-    // user address --> user tokens
+    // maps user address --> user billing balance
     mapping(address => uint256) public userBalances;
+
+    // -- Events --
+
+    /**
+     * @dev User adds tokens
+     */
+    event TokensAdded(address indexed user, uint256 amount);
+    /**
+     * @dev User removes tokens
+     */
+    event TokensRemoved(address indexed user, address indexed to, uint256 amount);
+
+    /**
+     * @dev Gateway pulled tokens from a user
+     */
+    event TokensPulled(address indexed user, uint256 amount);
+
+    /**
+     * @dev Gateway address updated
+     */
+    event GatewayUpdated(address indexed newGateway);
 
     /**
      * @dev Constructor function
@@ -63,6 +88,7 @@ contract Billing is IBilling, Governed {
 
     /**
      * @dev Add tokens into the billing contract
+     * Ensure graphToken.approve() is called on the billing contract first
      * @param _amount  Amount of tokens to add
      */
     function add(uint256 _amount) external override {
@@ -71,6 +97,7 @@ contract Billing is IBilling, Governed {
 
     /**
      * @dev Add tokens into the billing contract for any user
+     * Ensure graphToken.approve() is called on the billing contract first
      * @param _to  Address that tokens are being added to
      * @param _amount  Amount of tokens to add
      */
@@ -80,6 +107,7 @@ contract Billing is IBilling, Governed {
 
     /**
      * @dev Add tokens into the billing contract
+     * Ensure graphToken.approve() is called on the billing contract first
      * @param _from  Address that is sending tokens
      * @param _user  User that is adding tokens
      * @param _amount  Amount of tokens to add
