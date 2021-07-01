@@ -30,6 +30,7 @@ contract Governed {
      * @param _initGovernor  Governor address
      */
     constructor(address _initGovernor) {
+        require(_initGovernor != address(0), "Governor must not be 0");
         governor = _initGovernor;
     }
 

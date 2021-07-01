@@ -89,6 +89,7 @@ contract Billing is IBilling, Governed {
         address _user,
         uint256 _amount
     ) private {
+        require(_amount != 0, "Must add more than 0");
         require(_user != address(0), "user != 0");
         require(graphToken.transferFrom(_from, address(this), _amount), "Add transfer failed");
         userBalances[_user] = userBalances[_user] + _amount;
@@ -101,6 +102,7 @@ contract Billing is IBilling, Governed {
      * @param _amount  Amount of tokens to remove
      */
     function remove(address _user, uint256 _amount) external override {
+        require(_amount != 0, "Must remove more than 0");
         require(userBalances[msg.sender] >= _amount, "Too much removed");
         userBalances[msg.sender] = userBalances[msg.sender] - _amount;
         require(graphToken.transfer(_user, _amount), "Remove transfer failed");
