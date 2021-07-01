@@ -186,6 +186,6 @@ describe('Billing', () => {
     // the bad transfer of GRT
     await token.connect(user1.signer).transfer(billing.address, oneMillion)
     const tx = billing.connect(user1.signer).rescueTokens(user1.address, token.address, oneMillion)
-    await expect(tx).revertedWith('!gateway')
+    await expect(tx).revertedWith('Caller must be gateway')
   })
 })
