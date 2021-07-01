@@ -10,7 +10,7 @@ import "./Governed.sol";
 /**
  * @title Billing Contract
  * @dev The billing contract allows for Graph Tokens to be added by a user. The token can then
- * be pulled by a permissoned user named 'gateway'. It is owned and controlled by the 'governor'.
+ * be pulled by a permissioned user named 'gateway'. It is owned and controlled by the 'governor'.
  */
 
 contract Billing is IBilling, Governed {
