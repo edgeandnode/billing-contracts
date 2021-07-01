@@ -119,9 +119,7 @@ contract Billing is IBilling, Governed {
         address _to
     ) external override onlyGateway {
         uint256 maxAmount = _pull(_user, _amount);
-        if (maxAmount > 0) {
-            require(graphToken.transfer(_to, maxAmount), "Pull transfer failed");
-        }
+        _sendTokens(_to, maxAmount);
     }
 
     /**
@@ -141,9 +139,7 @@ contract Billing is IBilling, Governed {
             uint256 userMax = _pull(_users[i], _amounts[i]);
             totalPulled = totalPulled + userMax;
         }
-        if (totalPulled > 0) {
-            require(graphToken.transfer(_to, totalPulled), "Pull Many transfer failed");
-        }
+        _sendTokens(_to, totalPulled);
     }
 
     /**
@@ -159,5 +155,17 @@ contract Billing is IBilling, Governed {
             emit TokensPulled(_user, _amount);
         }
         return maxAmount;
+    }
+
+    /**
+     * @dev Send tokens to a destination account
+     * @param _to Address where to send tokens
+     * @param _amount Amount of tokens to send
+     */
+    function _sendTokens(address _to, uint256 _amount) internal {
+        if (_amount > 0) {
+            require(_to != address(0), "Cannot transfer to empty address");
+            require(graphToken.transfer(_to, _amount), "Token transfer failed");
+        }
     }
 }

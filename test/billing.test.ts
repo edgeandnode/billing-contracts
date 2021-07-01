@@ -1,9 +1,12 @@
 import { expect } from 'chai'
+import { constants } from 'ethers'
 import * as deployment from '../utils/deploy'
 import { getAccounts, Account, toGRT } from '../utils/helpers'
 
 import { Billing } from '../build/types/Billing'
 import { Token } from '../build/types/Token'
+
+const { AddressZero } = constants
 
 describe('Billing', () => {
   let me: Account
@@ -99,11 +102,13 @@ describe('Billing', () => {
     const afterRemove = await billing.userBalances(user1.address)
     expect(beforeRemove.eq(afterRemove.sub(oneHundred)))
   })
+
   it('should fail on removing too much', async function () {
     await billing.connect(user1.signer).add(oneHundred)
     const tx = billing.connect(user1.signer).remove(user1.address, oneMillion)
     await expect(tx).revertedWith('Too much removed')
   })
+
   it('should pull', async function () {
     const gatewayBalanceBefore = await token.balanceOf(gateway1.address)
     const addBefore = await billing.userBalances(user1.address)
@@ -117,6 +122,7 @@ describe('Billing', () => {
     expect(gatewayBalanceBefore.eq(gatewayBalanceAfter.add(oneHundred)))
     expect(addBefore.eq(addAfter.sub(oneHundred)))
   })
+
   it('should pull many', async function () {
     await billing.connect(user1.signer).add(oneHundred)
     await billing.connect(user2.signer).add(oneHundred)
@@ -124,7 +130,9 @@ describe('Billing', () => {
     const addBefore2 = await billing.userBalances(user2.address)
     const gatewayBalanceBefore = await token.balanceOf(gateway1.address)
 
-    await billing.connect(gateway1.signer).pullMany([user1.address, user2.address], [oneHundred, oneHundred], gateway1.address)
+    await billing
+      .connect(gateway1.signer)
+      .pullMany([user1.address, user2.address], [oneHundred, oneHundred], gateway1.address)
 
     const addAfter1 = await billing.userBalances(user1.address)
     const addAfter2 = await billing.userBalances(user2.address)
@@ -134,15 +142,32 @@ describe('Billing', () => {
     expect(addBefore1.eq(addAfter1.sub(oneHundred)))
     expect(addBefore2.eq(addAfter2.sub(oneHundred)))
   })
+
   it('should fail pull on lengths not equal', async function () {
     await billing.connect(user1.signer).add(oneHundred)
     await billing.connect(user2.signer).add(oneHundred)
     const tx = billing.connect(gateway1.signer).pullMany([user1.address], [oneHundred, oneHundred], gateway1.address)
     await expect(tx).revertedWith('Lengths not equal')
   })
+
   it('should fail on pull when not gateway', async function () {
     await billing.connect(user1.signer).add(oneHundred)
     const tx = billing.connect(me.signer).pull(user1.address, oneHundred, gateway1.address)
     await expect(tx).revertedWith('!gateway')
+  })
+
+  it('should fail pull on empty destination address', async function () {
+    await billing.connect(user1.signer).add(oneHundred)
+    const tx = billing.connect(gateway1.signer).pull(user1.address, oneHundred, AddressZero)
+    await expect(tx).revertedWith('Cannot transfer to empty address')
+  })
+
+  it('should fail pull many on empty destination address', async function () {
+    await billing.connect(user1.signer).add(oneHundred)
+    await billing.connect(user2.signer).add(oneHundred)
+    const tx = billing
+      .connect(gateway1.signer)
+      .pullMany([user1.address, user2.address], [oneHundred, oneHundred], AddressZero)
+    await expect(tx).revertedWith('Cannot transfer to empty address')
   })
 })
