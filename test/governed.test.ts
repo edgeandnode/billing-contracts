@@ -18,8 +18,8 @@ describe('Governed', () => {
   beforeEach(async function () {
     ;[me, governor] = await getAccounts()
 
-    const factory = await ethers.getContractFactory('GovernedMock')
-    governed = (await factory.connect(governor.signer).deploy()) as unknown as Governed
+    const factory = await ethers.getContractFactory('Governed')
+    governed = (await factory.connect(governor.signer).deploy(governor.address)) as unknown as Governed
   })
 
   it('should reject transfer if not allowed', async function () {

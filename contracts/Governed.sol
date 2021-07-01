@@ -27,8 +27,9 @@ contract Governed {
 
     /**
      * @dev Initialize the governor to the contract caller.
+     * @param _initGovernor  Governor address
      */
-    function _initialize(address _initGovernor) internal {
+    constructor(address _initGovernor) {
         governor = _initGovernor;
     }
 
@@ -51,10 +52,7 @@ contract Governed {
      * This function must called by the pending governor.
      */
     function acceptOwnership() external {
-        require(
-            pendingGovernor != address(0) && msg.sender == pendingGovernor,
-            "Caller must be pending governor"
-        );
+        require(pendingGovernor != address(0) && msg.sender == pendingGovernor, "Caller must be pending governor");
 
         address oldGovernor = governor;
         address oldPendingGovernor = pendingGovernor;
