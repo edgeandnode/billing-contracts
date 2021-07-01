@@ -46,6 +46,11 @@ contract Billing is IBilling, Governed {
     event GatewayUpdated(address indexed newGateway);
 
     /**
+     * @dev Tokens rescued by the gateway
+     */
+    event TokensRescued(address indexed to, address indexed token, uint256 amount);
+
+    /**
      * @dev Constructor function
      * @param _gateway   Gateway address
      * @param _token     Graph Token address
@@ -187,6 +192,7 @@ contract Billing is IBilling, Governed {
         return maxAmount;
     }
 
+    /**
      * @dev Allows the Gateway to rescue any ERC20 tokens sent to this contract by accident
      * @param _to  Destination address to send the tokens
      * @param _token  Token address of the token that was accidentally sent to the contract
