@@ -90,6 +90,7 @@ contract Billing is IBilling, Governed {
         address _user,
         uint256 _amount
     ) private {
+        require(_user != address(0), "user != 0");
         require(graphToken.transferFrom(_from, address(this), _amount), "Add transfer failed");
         userBalances[_user] = userBalances[_user] + _amount;
         emit TokensAdded(_user, _amount);
@@ -149,5 +150,23 @@ contract Billing is IBilling, Governed {
             emit TokensPulled(_user, _amount);
         }
         return maxAmount;
+    }
+
+    /**
+     * @dev Allows the Gateway to rescue any ERC20 tokens sent to this contract by accident
+     * @param _to  Destination address to send the tokens
+     * @param _token  Token address of the token that was accidentally sent to the contract
+     * @param _amount  Amount of tokens to pull
+     */
+    function rescueTokens(
+        address _to,
+        address _token,
+        uint256 _amount
+    ) external onlyGateway {
+        require(_to != address(0), "Cannot send to address(0)");
+        require(_amount != 0, "Cannot rescue 0 tokens");
+        IERC20 token = IERC20(_token);
+        require(token.transfer(_to, _amount), "Rescue tokens failed");
+        emit TokensRescued(_to, _token, _amount);
     }
 }

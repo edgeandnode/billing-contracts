@@ -23,6 +23,11 @@ interface IBilling {
     event GatewayUpdated(address indexed newGateway);
 
     /**
+     * @dev Tokens rescued by the gateway
+     */
+    event TokensRescued(address indexed to, address indexed token, uint256 amount);
+
+    /**
      * @dev Set the new gateway address
      * @param _newGateway  New gateway address
      */
