@@ -186,8 +186,8 @@ contract Billing is IBilling, Governed {
     function _pull(address _user, uint256 _amount) internal returns (uint256) {
         uint256 maxAmount = Math.min(_amount, userBalances[_user]);
         if (maxAmount > 0) {
-            userBalances[_user] = userBalances[_user] - _amount;
-            emit TokensPulled(_user, _amount);
+            userBalances[_user] = userBalances[_user] - maxAmount;
+            emit TokensPulled(_user, maxAmount);
         }
         return maxAmount;
     }
