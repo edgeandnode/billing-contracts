@@ -148,6 +148,26 @@ describe('Billing', () => {
     expect(addBefore2.eq(addAfter2.sub(oneHundred)))
   })
 
+  it('should pull many even with partial user balances', async function () {
+    await billing.connect(user1.signer).add(oneHundred)
+    await billing.connect(user2.signer).add(oneHundred)
+    const addBefore1 = await billing.userBalances(user1.address)
+    const addBefore2 = await billing.userBalances(user2.address)
+    const gatewayBalanceBefore = await token.balanceOf(gateway1.address)
+
+    await billing
+      .connect(gateway1.signer)
+      .pullMany([user1.address, user2.address], [oneHundred, oneHundred.mul(2)], gateway1.address)
+
+    const addAfter1 = await billing.userBalances(user1.address)
+    const addAfter2 = await billing.userBalances(user2.address)
+    const gatewayBalanceAfter = await token.balanceOf(gateway1.address)
+
+    expect(gatewayBalanceBefore.eq(gatewayBalanceAfter.add(oneHundred).add(oneHundred)))
+    expect(addBefore1.eq(addAfter1.sub(oneHundred)))
+    expect(addBefore2.eq(addAfter2.sub(oneHundred)))
+  })
+
   it('should fail pull on lengths not equal', async function () {
     await billing.connect(user1.signer).add(oneHundred)
     await billing.connect(user2.signer).add(oneHundred)
