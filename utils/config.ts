@@ -31,6 +31,6 @@ export const deployConfig = {
     ethereumMATICBridge: '0x401F6c983eA34274ec46f84D70b31C151321188b',
     ethereumERC20Bridge: '0xA0c68C638235ee32657e8f720a23ceC1bFc77C77',
     maticGRT: '0x5fe2B58c013d7601147DcdD68C143A77499f5531',
-    maticBilling: ''0x84efD54b3Fb218732d310fe8802d8b3063055973,
+    maticBilling: '0x84efD54b3Fb218732d310fe8802d8b3063055973',
   },
 }
