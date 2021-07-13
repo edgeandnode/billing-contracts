@@ -1,7 +1,7 @@
 {
-  "name": "solidity-starter",
-  "version": "0.1.0",
-  "description": "Solidity starter",
+  "name": "graph-studio-billing-contracts",
+  "version": "0.2.2",
+  "description": "Graph Studio Billing Contracts",
   "main": "index.js",
   "scripts": {
     "prepublishOnly": "scripts/prepublish",
