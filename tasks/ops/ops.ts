@@ -26,11 +26,6 @@ task('ops:pullMany', 'Build payload for pullMany()')
     })
 
     const { contracts } = hre
-
-    // console.log(users)
-    // console.log(balances)
-
     const payload = await contracts.Billing.populateTransaction.pullMany(users, balances, taskArgs.dstAddress)
-
     console.log(payload)
   })
