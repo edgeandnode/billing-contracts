@@ -111,6 +111,32 @@ contract Billing is IBilling, Governed {
     }
 
     /**
+     * @dev Add tokens into the billing contract in bulk
+     * Ensure graphToken.approve() is called on the billing contract first
+     * @param _to  Array of addresses where to add tokens
+     * @param _amount  Array of amount of tokens to add to each account
+     */
+    function addToMany(address[] calldata _to, uint256[] calldata _amount) external override {
+        require(_to.length == _amount.length, "Lengths not equal");
+
+        // Get total amount to add
+        uint256 totalAmount = 0;
+        for (uint256 i = 0; i < _amount.length; i++) {
+            require(_amount[i] > 0, "Must add more than 0");
+            totalAmount += _amount[i];
+        }
+        require(graphToken.transferFrom(msg.sender, address(this), totalAmount), "Add transfer failed");
+
+        // Add each amount
+        for (uint256 i = 0; i < _to.length; i++) {
+            address user = _to[i];
+            require(user != address(0), "user != 0");
+            userBalances[user] += _amount[i];
+            emit TokensAdded(user, _amount[i]);
+        }
+    }
+
+    /**
      * @dev Add tokens into the billing contract
      * Ensure graphToken.approve() is called on the billing contract first
      * @param _from  Address that is sending tokens
