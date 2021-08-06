@@ -28,6 +28,15 @@ async function getAllDepositors(): Promise<Depositor[]> {
   })
 }
 
+async function ask(message: string): Promise<boolean> {
+  const res = await inquirer.prompt({
+    name: 'confirm',
+    type: 'confirm',
+    message,
+  })
+  return res.confirm
+}
+
 task('ops:pull-many:tx', 'Generate transaction data for pulling all funds from users')
   .addParam('dstAddress', 'Destination address of withdrawal')
   .setAction(async (taskArgs, hre: HardhatRuntimeEnvironment) => {
@@ -51,16 +60,21 @@ task('ops:pull-many:tx', 'Generate transaction data for pulling all funds from u
       console.log(depositor.address, utils.formatEther(depositor.balance))
     }
 
-    // Transaction data
-    const res = await inquirer.prompt({
-      name: 'confirm',
-      type: 'confirm',
-      message: `Print transaction data?`,
-    })
-    if (res.confirm) {
+    // Transaction data for pullMany
+    if (await ask('Print <pullMany> transaction data?')) {
       console.log('Transaction payload')
       console.log(`--------------------`)
       const payload = await contracts.Billing.populateTransaction.pullMany(users, balances, taskArgs.dstAddress)
+      console.log(payload)
+    } else {
+      console.log('Bye!')
+    }
+
+    // Transaction data for addToMany
+    if (await ask('Print <addToMany> transaction data?')) {
+      console.log('Transaction payload')
+      console.log(`--------------------`)
+      const payload = await contracts.Billing.populateTransaction.addToMany(users, balances)
       console.log(payload)
     } else {
       console.log('Bye!')
