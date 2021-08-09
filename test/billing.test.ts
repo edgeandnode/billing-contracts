@@ -129,6 +129,14 @@ describe('Billing', () => {
       expect(afterBalance).eq(beforeBalance.add(totalAmount))
     })
 
+    it('reject add many to unequal lengths', async function () {
+      const users = [AddressZero, user2.address, user2.address]
+      const amounts = [toGRT('1000'), toGRT('2000')]
+
+      const tx = billing.connect(user1.signer).addToMany(users, amounts)
+      await expect(tx).revertedWith('Lengths not equal')
+    })
+
     it('reject add many to empty address', async function () {
       const users = [AddressZero, user2.address]
       const amounts = [toGRT('1000'), toGRT('2000')]
