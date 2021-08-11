@@ -7,7 +7,6 @@ import { getAccounts, Account, toGRT } from '../utils/helpers'
 
 import { Billing } from '../build/types/Billing'
 import { Token } from '../build/types/Token'
-import { ftruncate } from 'fs'
 
 const { AddressZero } = constants
 

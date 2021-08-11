@@ -1,6 +1,6 @@
 # Billing Contract
 
-This repository contains a Billing contract to be deployed on the Polygon (previously Matic)
+This repository contains a Billing contract to be deployed on the Polygon
 network. It allows Users to add tokens (GRT) into the contract for the Gateway to pull when
 a billing period is up.
 
@@ -32,21 +32,31 @@ will get Polygon GRT on the Polygon chain.
 - If the User ever wants to move their Polygon GRT back to Ethereum, they must use the reverse bridge,
 which has about a 3 hour waiting time.
 
-## Testing in Prod
+## Testing
+Run the test suite with:
+```bash
+yarn test
+```
+
+There is also a test to check an upgrade of one billing contract to another goes smoothly. It uses
+hardhats forked mainnet feature. In this case we fork matic mainnet. To test this, first make
+sure .env is filled out with MATIC_ARCHIVE_URL with no quotes. Then run:
+```bash
+yarn test:upgrade
+```
+
+## Using the console
 Here is how to use hardhat to quickly do some transactions:
 
 ```bash
-npx hardhat console --network mumbai
+npx hardhat console --network matic
 
 accounts = await ethers.getSigners()
 token = await hre.contracts.Token.connect(accounts[0])
 await token.approve('0x5DE9A13C486f5aA12F4D8e5E77246F6E24dac274', '1000000000000000000000')
 
 billing = await hre.contracts.Billing.connect(accounts[0])
-await billing.setGateway('0x93606b27cB5e4c780883eC4F6b7Bed5f6572d1dd')
 await billing.add('1000000000000000000')
-await billing.remove('0x93606b27cB5e4c780883eC4F6b7Bed5f6572d1dd','500000000000000000')
-await billing.pull('0x93606b27cB5e4c780883eC4F6b7Bed5f6572d1dd', '500000000000000000')
 ```
 
 ## Deploy instructions
@@ -65,9 +75,10 @@ Then run:
 
 ```
 npx hardhat verify --network <NETWORK_NAME> \
+    <NEW_DEPLOYED_ADDRESS> \
     <GOVERNOR_ADDRESS> \
     <GATEWAY_ADDRESS> \
-    <MATIC_GRT_ADDRESS> \
-    <NEW_DEPLOYED_ADDRESS>
+    <MATIC_GRT_ADDRESS>
+```
 
 

@@ -1,7 +1,6 @@
 import hre from 'hardhat'
 import { providers, utils, BigNumber, Signer } from 'ethers'
 import { formatUnits } from 'ethers/lib/utils'
-const { types } = require("hardhat/config")
 
 const { parseUnits } = utils
 
