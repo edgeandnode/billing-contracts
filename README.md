@@ -40,7 +40,7 @@ yarn test
 
 There is also a test to check an upgrade of one billing contract to another goes smoothly. It uses
 hardhats forked mainnet feature. In this case we fork matic mainnet. To test this, first make
-sure .env is filled out with MATIC_ARCHIVE_URL with no quotes. Then run:
+sure `.env` is filled out with `MATIC_ARCHIVE_URL` with no quotes. Then run:
 ```bash
 yarn test:upgrade
 ```

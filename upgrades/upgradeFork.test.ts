@@ -9,7 +9,8 @@ import { addresses } from '../utils/addresses'
 import { Billing } from '../build/types/Billing'
 import { Token } from '../build/types/Token'
 import { BillingV1 } from './BillingV1'
-import { userData } from './userData'
+import { getAllDepositors } from '../tasks/ops/ops'
+import { logger } from '../utils/logging'
 
 const { contracts } = hre
 
@@ -22,10 +23,12 @@ describe('Billing matic-fork upgrade', () => {
   let totalAmount: BigNumber
 
   before(async function () {
-    for (let i = 0; i < userData.length; i++) {
-      users.push(userData[i].id)
-      amounts.push(BigNumber.from(userData[i].billingBalance))
-    }
+    const depositors = await getAllDepositors()
+    depositors.forEach((depositor) => {
+      users.push(depositor.address)
+      amounts.push(depositor.balance)
+    })
+
     totalAmount = amounts.reduce((a, b) => a.add(b), BigNumber.from(0))
 
     const provider = new providers.JsonRpcProvider()
@@ -39,6 +42,7 @@ describe('Billing matic-fork upgrade', () => {
   })
 
   describe('addToMany() & pullMany()', function () {
+    this.timeout(0) // takes up to 50 seconds per test, so we remove timeout
     it('should pull many from old billing', async function () {
       // setup
       const oldBilling = new Contract(addresses.mainnet.maticBillingOld, BillingV1, gateway.signer)
@@ -50,7 +54,13 @@ describe('Billing matic-fork upgrade', () => {
       }
 
       // Pull to the gateway address
-      await oldBilling.pullMany(users, amounts, gateway.address)
+      try {
+        await oldBilling.pullMany(users, amounts, gateway.address)
+        logger.log('Pull many tx successful!')
+      } catch {
+        logger.error('Pull many tx failed')
+        process.exit()
+      }
 
       // confirm
       const afterGatewayGRT = await token.balanceOf(gateway.address)
@@ -73,7 +83,13 @@ describe('Billing matic-fork upgrade', () => {
       }
 
       // Add to many users
-      await billing.connect(gateway.signer).addToMany(users, amounts)
+      try {
+        await billing.connect(gateway.signer).addToMany(users, amounts)
+        logger.log('Add to many tx successful!')
+      } catch {
+        logger.error('Add to many tx failed')
+        process.exit()
+      }
 
       // confirm
       const afterGatewayGRT = await token.balanceOf(gateway.address)

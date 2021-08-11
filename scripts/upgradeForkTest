@@ -12,7 +12,7 @@ evm_running() {
 }
 evm_start() {
   echo "Starting our own evm instance at port $MAINNET_FORK_PORT"
-  npx hardhat node --fork "$MATIC_ARCHIVE_URL" --fork-block-number 17803963 > /dev/null &
+  npx hardhat node --fork "$MATIC_ARCHIVE_URL" > /dev/null &
 }
 
 evm_kill() {
