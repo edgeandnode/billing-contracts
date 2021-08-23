@@ -3,7 +3,7 @@ import { extendEnvironment } from 'hardhat/config'
 import { lazyObject } from 'hardhat/plugins'
 import '@nomiclabs/hardhat-ethers'
 
-import { deployConfig } from '../utils/config'
+import { addresses } from '../utils/addresses'
 import { BillingContracts, loadContracts } from '../utils/contracts'
 
 declare module 'hardhat/types/runtime' {
@@ -14,14 +14,11 @@ declare module 'hardhat/types/runtime' {
 
 extendEnvironment((hre: HardhatRuntimeEnvironment) => {
   hre['contracts'] = lazyObject(() => {
-    if (hre.network.config.chainId == 137) {
-      return loadContracts(deployConfig.mainnet.maticBilling, deployConfig.mainnet.maticGRT, hre.ethers.provider)
+    // 137 = matic. 1337 = hardhat & hardhat-matic-fork
+    if (hre.network.config.chainId == 137 || hre.network.config.chainId == 1337) {
+      return loadContracts(addresses.mainnet.maticBilling, addresses.mainnet.maticGRT, hre.ethers.provider)
     } else if (hre.network.config.chainId == 80001) {
-      return loadContracts(
-        deployConfig.testnet.mumbaiBilling,
-        deployConfig.testnet.mumbaiDummyERC20,
-        hre.ethers.provider,
-      )
+      return loadContracts(addresses.testnet.mumbaiBilling, addresses.testnet.mumbaiDummyERC20, hre.ethers.provider)
     }
   })
 })

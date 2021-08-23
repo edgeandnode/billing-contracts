@@ -9,6 +9,7 @@
     "clean": "rm -rf build/ cache/ dist/",
     "compile": "hardhat compile",
     "test": "scripts/test",
+    "test:upgrade": "scripts/upgradeForkTest",
     "test:gas": "RUN_EVM=true REPORT_GAS=true scripts/test",
     "test:coverage": "scripts/coverage",
     "lint": "yarn run lint:ts && yarn run lint:sol",

@@ -23,6 +23,14 @@ interface IBilling {
     function addTo(address _to, uint256 _amount) external;
 
     /**
+     * @dev Add tokens into the billing contract in bulk
+     * Ensure graphToken.approve() is called on the billing contract first
+     * @param _to  Array of addresses where to add tokens
+     * @param _amount  Array of amount of tokens to add to each account
+     */
+    function addToMany(address[] calldata _to, uint256[] calldata _amount) external;
+
+    /**
      * @dev Remove tokens from the billing contract
      * @param _to  Address that tokens are being removed from
      * @param _amount  Amount of tokens to remove
