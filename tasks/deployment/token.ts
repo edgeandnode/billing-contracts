@@ -8,7 +8,7 @@ import { deployConfig } from '../../utils/config'
 import '../extendContracts'
 
 task('deployToken', deployConfig.token.description)
-  .addParam('totalSupply', 'Total supply of the token', deployConfig.token.totalSupply)
+  .addParam('totalSupply', 'Total supply of the token', deployConfig.token.params.totalSupply)
   .setAction(async (taskArgs, hre: HardhatRuntimeEnvironment) => {
     const accounts = await hre.ethers.getSigners()
     await deployToken([taskArgs.totalSupply], accounts[0] as unknown as Wallet)

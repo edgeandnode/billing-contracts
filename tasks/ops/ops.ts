@@ -1,8 +1,11 @@
 import axios from 'axios'
 import inquirer from 'inquirer'
-import { BigNumber, utils } from 'ethers'
+import { BigNumber, utils, Contract } from 'ethers'
 import { task } from 'hardhat/config'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
+import { logger } from '../../utils/logging'
+import { BillingV1 } from '../../upgrades/BillingV1'
+import { addresses } from '../../utils/addresses'
 
 const BILLING_SUBGRAPH = 'https://api.thegraph.com/subgraphs/name/graphprotocol/billing'
 
@@ -11,15 +14,21 @@ interface Depositor {
   balance: BigNumber
 }
 
-async function getAllDepositors(): Promise<Depositor[]> {
+export async function getAllDepositors(): Promise<Depositor[]> {
   const query = `{
-    users(first: 1000, where: {billingBalance_gt: "0"}) {
-      id
-      billingBalance
+    users(
+      first: 1000,
+      where: {billingBalance_gt: "0"},
+      orderBy: billingBalance,
+      orderDirection: desc
+    ) {
+        id
+        billingBalance
+      }
     }
-  }
   `
   const response = await axios.post(BILLING_SUBGRAPH, { query })
+  logger.log(`Found: ${response.data.data.users.length}`)
   return response.data.data.users.map((user) => {
     return {
       address: user.id,
@@ -42,7 +51,7 @@ task('ops:pull-many:tx', 'Generate transaction data for pulling all funds from u
   .setAction(async (taskArgs, hre: HardhatRuntimeEnvironment) => {
     const { contracts } = hre
 
-    console.log('Getting depositors...')
+    logger.log('Getting depositors...')
     const depositors = await getAllDepositors()
     const users = []
     const balances = []
@@ -53,30 +62,33 @@ task('ops:pull-many:tx', 'Generate transaction data for pulling all funds from u
     })
     const totalBalance = balances.reduce((a, b) => a.add(b), BigNumber.from(0))
 
-    console.log(`Found: ${depositors.length}`)
-    console.log(`Balance: ${utils.formatEther(totalBalance)}`)
-    console.log(`--------------------------------`)
+    logger.log(`Balance: ${utils.formatEther(totalBalance)}`)
+    logger.log(`--------------------------------`)
     for (const depositor of depositors) {
-      console.log(depositor.address, utils.formatEther(depositor.balance))
+      logger.log(depositor.address, utils.formatEther(depositor.balance))
     }
 
+    // Setup old billing
+    const oldBilling = new Contract(addresses.mainnet.maticBillingOld, BillingV1)
+
     // Transaction data for pullMany
+
     if (await ask('Print <pullMany> transaction data?')) {
-      console.log('Transaction payload')
-      console.log(`--------------------`)
-      const payload = await contracts.Billing.populateTransaction.pullMany(users, balances, taskArgs.dstAddress)
-      console.log(payload)
+      logger.log('Transaction payload')
+      logger.log(`--------------------`)
+      const payload = await oldBilling.populateTransaction.pullMany(users, balances, taskArgs.dstAddress)
+      logger.log(payload)
     } else {
-      console.log('Bye!')
+      logger.log('Bye!')
     }
 
     // Transaction data for addToMany
     if (await ask('Print <addToMany> transaction data?')) {
-      console.log('Transaction payload')
-      console.log(`--------------------`)
+      logger.log('Transaction payload')
+      logger.log(`--------------------`)
       const payload = await contracts.Billing.populateTransaction.addToMany(users, balances)
-      console.log(payload)
+      logger.log(payload)
     } else {
-      console.log('Bye!')
+      logger.log('Bye!')
     }
   })
