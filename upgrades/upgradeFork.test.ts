@@ -22,21 +22,30 @@ describe('Billing matic-fork upgrade', () => {
   const amounts: BigNumber[] = []
   let totalAmount: BigNumber
 
+  async function connectToForkedMainnet() {
+    const provider = new providers.JsonRpcProvider()
+    try {
+      await provider.send('hardhat_impersonateAccount', [deployConfig.billing.params.gatewayAddress])
+      const signer: Signer = await provider.getSigner(deployConfig.billing.params.gatewayAddress)
+      // await provider.send('hardhat_impersonateAccount', ['0x3a16da4671abc0ef87e6274575da393fc33db32d'])
+      // const signer: Signer = await provider.getSigner('0x3a16da4671abc0ef87e6274575da393fc33db32d')
+      const address = await signer.getAddress()
+      gateway = { signer, address }
+      logger.log('Connected to fork!')
+    } catch (e) {
+      logger.error('Connecting to forked mainnet provider failed. Trying again....')
+      setTimeout(await connectToForkedMainnet, 3000)
+    }
+  }
+
   before(async function () {
     const depositors = await getAllDepositors()
     depositors.forEach((depositor) => {
       users.push(depositor.address)
       amounts.push(depositor.balance)
     })
-
     totalAmount = amounts.reduce((a, b) => a.add(b), BigNumber.from(0))
-
-    const provider = new providers.JsonRpcProvider()
-    await provider.send('hardhat_impersonateAccount', [deployConfig.billing.params.gatewayAddress])
-    const signer: Signer = await provider.getSigner(deployConfig.billing.params.gatewayAddress)
-    const address = await signer.getAddress()
-    gateway = { signer, address }
-
+    await connectToForkedMainnet()
     billing = contracts.Billing
     token = contracts.Token
   })
@@ -50,15 +59,16 @@ describe('Billing matic-fork upgrade', () => {
       const beforeOldBillingGRT = await token.balanceOf(oldBilling.address)
       const beforeUserBalances: BigNumber[] = []
       for (let i = 0; i < users.length; i++) {
+        console.log(`${i} user balance received`)
         beforeUserBalances.push(await oldBilling.userBalances(users[i]))
       }
 
       // Pull to the gateway address
       try {
-        await oldBilling.pullMany(users, amounts, gateway.address)
+        await oldBilling.pullMany(users, amounts, gateway.address, { gasLimit: 12000000 })
         logger.log('Pull many tx successful!')
-      } catch {
-        logger.error('Pull many tx failed')
+      } catch (e) {
+        logger.error('Pull many tx failed\n', e)
         process.exit()
       }
 
@@ -84,10 +94,10 @@ describe('Billing matic-fork upgrade', () => {
 
       // Add to many users
       try {
-        await billing.connect(gateway.signer).addToMany(users, amounts)
+        await billing.connect(gateway.signer).addToMany(users, amounts, { gasLimit: 10000000 })
         logger.log('Add to many tx successful!')
-      } catch {
-        logger.error('Add to many tx failed')
+      } catch (e) {
+        logger.error('Add to many tx failed\n', e)
         process.exit()
       }
 
