@@ -41,7 +41,7 @@ interface NetworkConfig {
 const networkConfigs: NetworkConfig[] = [
   { network: 'mainnet', chainId: 1 },
   { network: 'goerli', chainId: 5 },
-  { network: 'matic', chainId: 137, url: 'https://rpc-mainnet.maticvigil.com' },
+  { network: 'matic', chainId: 137, url: process.env.MATIC_ARCHIVE_URL },
   { network: 'mumbai', chainId: 80001, url: 'https://rpc-mumbai.maticvigil.com' },
   { network: 'matic-fork', chainId: 1337, url: 'http://127.0.0.1:8545/' },
 ]
