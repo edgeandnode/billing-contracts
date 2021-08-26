@@ -47,7 +47,7 @@ export async function ask(message: string): Promise<boolean> {
   return res.confirm
 }
 
-task('ops:pull-many:tx', 'Generate transaction data for pulling all funds from users')
+task('ops:pull-many:tx', 'Execute transaction for pulling all funds from users')
   .addParam('dstAddress', 'Destination address of withdrawal')
   .setAction(async (taskArgs, hre: HardhatRuntimeEnvironment) => {
     const accounts = await hre.ethers.getSigners()
@@ -62,11 +62,14 @@ task('ops:pull-many:tx', 'Generate transaction data for pulling all funds from u
       const path = './tasks/ops/depositors.json'
       if (fs.existsSync(path)) fs.unlinkSync(path)
       fs.writeFileSync('./tasks/ops/depositors.json', JSON.stringify(depositors, null, 2), { flag: 'a+' })
+      const writeDepositors = JSON.parse(fs.readFileSync(path).toString())
+      if (writeDepositors.length != depositors.length) {
+        logger.error('Written depositors does not equal fetched depositors. Exiting')
+        process.exit()
+      }
     } catch (e) {
-      console.log(`Error saving artifacts: ${e.message}`)
+      logger.log(`Error writing depositors: \n${e}`)
     }
-
-    // console.log(depositors)
 
     depositors.forEach((depositor) => {
       users.push(depositor.address)
@@ -80,9 +83,6 @@ task('ops:pull-many:tx', 'Generate transaction data for pulling all funds from u
       logger.log(depositor.address, utils.formatEther(depositor.balance))
     }
 
-    // Setup old billing
-    const oldBilling = new Contract(addresses.mainnet.maticBillingOld, BillingV1)
-
     if (taskArgs.dstAddress != '0x76c00f71f4dace63fd83ec80dbc8c30a88b2891c') {
       logger.error('Wrong gateway address')
       process.exit()
@@ -91,9 +91,14 @@ task('ops:pull-many:tx', 'Generate transaction data for pulling all funds from u
     if (await ask('Execute <pullMany> transaction? **This will execute on mainnet matic**')) {
       logger.log('Transaction being sent')
       logger.log(`--------------------`)
-      const tx = await oldBilling.connect(gateway).pullMany(users, balances, taskArgs.dstAddress)
-      const receipt = await tx.wait()
-      logger.log(receipt)
+      try {
+        const oldBilling = new Contract(addresses.mainnet.maticBillingOld, BillingV1)
+        const tx = await oldBilling.connect(gateway).pullMany(users, balances, taskArgs.dstAddress)
+        const receipt = await tx.wait()
+        logger.log('Receipt: ', receipt)
+      } catch (e) {
+        logger.log(e)
+      }
     } else {
       logger.log('Bye!')
     }

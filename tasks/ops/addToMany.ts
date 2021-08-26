@@ -1,9 +1,9 @@
+import fs from 'fs'
 import { BigNumber, utils } from 'ethers'
 import { task } from 'hardhat/config'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { logger } from '../../utils/logging'
 import { ask } from './pullMany'
-import depositors from './depositors.json'
 
 task('ops:add-to-many:tx', 'Generate transaction data for pulling all funds from users').setAction(
   async (taskArgs, hre: HardhatRuntimeEnvironment) => {
@@ -14,8 +14,8 @@ task('ops:add-to-many:tx', 'Generate transaction data for pulling all funds from
     logger.log('Getting depositors...')
     const users = []
     const balances = []
-
-    console.log(depositors)
+    const path = './tasks/ops/depositors.json'
+    const depositors = JSON.parse(fs.readFileSync(path).toString())
 
     depositors.forEach((depositor) => {
       users.push(depositor.address)
@@ -30,11 +30,15 @@ task('ops:add-to-many:tx', 'Generate transaction data for pulling all funds from
     }
 
     if (await ask('Execute <addToMany> transaction? **This will execute on mainnet matic**')) {
-      logger.log('Transaction being sent')
-      logger.log(`--------------------`)
-      const tx = await contracts.Billing.connect(gateway).addToMany(users, balances)
-      const receipt = await tx.wait()
-      logger.log(receipt)
+      try {
+        logger.log('Transaction being sent')
+        logger.log(`--------------------`)
+        const tx = await contracts.Billing.connect(gateway).addToMany(users, balances)
+        const receipt = await tx.wait()
+        logger.log('Receipt: ', receipt)
+      } catch (e) {
+        logger.log(e)
+      }
     } else {
       logger.log('Bye!')
     }

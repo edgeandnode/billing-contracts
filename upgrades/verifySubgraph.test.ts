@@ -1,6 +1,4 @@
 import '@nomiclabs/hardhat-waffle'
-
-import hre from 'hardhat'
 import { expect } from 'chai'
 import { BigNumber, Contract } from 'ethers'
 import { Account, getAccounts } from '../utils/helpers'
@@ -26,13 +24,12 @@ describe('Subgraph - Confirm subgraph matches contract data', () => {
       const contractBalance = await oldBilling.userBalances(subgraphUsers[i].address)
       contractUsers.push(subgraphUsers[i].address)
       contractAmounts.push(contractBalance)
-      if (i % 10 == 0) logger.log(`Done ${i} queries`)
+      if (i % 10 == 0) logger.log(`${i} user balances received...`)
     }
     logger.log(`Done getting all balances!`)
   })
   it('should test all users', async function () {
     for (let i = 0; i < subgraphUsers.length; i++) {
-      // Note - current i = 23 is where we are seeing a failure. We are testing this, it should not
       expect(subgraphUsers[i].balance).eq(contractAmounts[i])
     }
   })

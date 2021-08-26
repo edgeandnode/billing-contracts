@@ -27,13 +27,11 @@ describe('Billing matic-fork upgrade', () => {
     try {
       await provider.send('hardhat_impersonateAccount', [deployConfig.billing.params.gatewayAddress])
       const signer: Signer = await provider.getSigner(deployConfig.billing.params.gatewayAddress)
-      // await provider.send('hardhat_impersonateAccount', ['0x3a16da4671abc0ef87e6274575da393fc33db32d'])
-      // const signer: Signer = await provider.getSigner('0x3a16da4671abc0ef87e6274575da393fc33db32d')
       const address = await signer.getAddress()
       gateway = { signer, address }
       logger.log('Connected to fork!')
     } catch (e) {
-      logger.error('Connecting to forked mainnet provider failed. Trying again....')
+      logger.error('Connecting to forked mainnet provider failed. Trying again in 3 seconds....')
       setTimeout(await connectToForkedMainnet, 3000)
     }
   }
@@ -51,7 +49,7 @@ describe('Billing matic-fork upgrade', () => {
   })
 
   describe('addToMany() & pullMany()', function () {
-    this.timeout(0) // takes up to 50 seconds per test, so we remove timeout
+    this.timeout(0) // takes up to 2 minutes, so we remove timeout
     it('should pull many from old billing', async function () {
       // setup
       const oldBilling = new Contract(addresses.mainnet.maticBillingOld, BillingV1, gateway.signer)
@@ -59,8 +57,8 @@ describe('Billing matic-fork upgrade', () => {
       const beforeOldBillingGRT = await token.balanceOf(oldBilling.address)
       const beforeUserBalances: BigNumber[] = []
       for (let i = 0; i < users.length; i++) {
-        console.log(`${i} user balance received`)
         beforeUserBalances.push(await oldBilling.userBalances(users[i]))
+        if (i % 10 == 0) logger.log(`${i} user balances received...`)
       }
 
       // Pull to the gateway address
