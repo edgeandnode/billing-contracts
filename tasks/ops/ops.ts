@@ -1,8 +1,10 @@
 import axios from 'axios'
 import inquirer from 'inquirer'
-import { BigNumber, utils, Contract } from 'ethers'
+import { BigNumber, utils, Contract, providers } from 'ethers'
 import { task } from 'hardhat/config'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
+import '@nomiclabs/hardhat-ethers'
+
 import { logger } from '../../utils/logging'
 import { BillingV1 } from '../../upgrades/BillingV1'
 import { addresses } from '../../utils/addresses'
@@ -51,6 +53,15 @@ task('ops:pull-many:tx', 'Generate transaction data for pulling all funds from u
   .setAction(async (taskArgs, hre: HardhatRuntimeEnvironment) => {
     const { contracts } = hre
 
+    // TEST FORK
+    const provider = contracts.Billing.provider as providers.JsonRpcProvider
+    await provider.send('hardhat_impersonateAccount', ['0x76c00f71f4dace63fd83ec80dbc8c30a88b2891c'])
+    const sender = await provider.getSigner('0x76c00f71f4dace63fd83ec80dbc8c30a88b2891c')
+
+    // REAL THING
+    // const accounts = await hre.ethers.getSigners()
+    // const sender = accounts[0]
+
     logger.log('Getting depositors...')
     const depositors = await getAllDepositors()
     const users = []
@@ -72,12 +83,12 @@ task('ops:pull-many:tx', 'Generate transaction data for pulling all funds from u
     const oldBilling = new Contract(addresses.mainnet.maticBillingOld, BillingV1)
 
     // Transaction data for pullMany
-
+    logger.log(`Pulling funds to -> ${taskArgs.dstAddress}`)
     if (await ask('Print <pullMany> transaction data?')) {
       logger.log('Transaction payload')
       logger.log(`--------------------`)
-      const payload = await oldBilling.populateTransaction.pullMany(users, balances, taskArgs.dstAddress)
-      logger.log(payload)
+      const tx = await oldBilling.connect(sender).pullMany(users, balances, taskArgs.dstAddress, { gasLimit: 12000000 })
+      logger.log(tx)
     } else {
       logger.log('Bye!')
     }
@@ -86,8 +97,8 @@ task('ops:pull-many:tx', 'Generate transaction data for pulling all funds from u
     if (await ask('Print <addToMany> transaction data?')) {
       logger.log('Transaction payload')
       logger.log(`--------------------`)
-      const payload = await contracts.Billing.populateTransaction.addToMany(users, balances)
-      logger.log(payload)
+      const tx = await contracts.Billing.connect(sender).addToMany(users, balances)
+      logger.log(tx)
     } else {
       logger.log('Bye!')
     }

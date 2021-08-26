@@ -61,9 +61,9 @@ function setupNetworkConfig(config) {
       url: netConfig.url ? netConfig.url : getProviderURL(netConfig.network),
       gas: netConfig.gas || 'auto',
       gasPrice: netConfig.gasPrice || 'auto',
-      accounts: {
-        mnemonic: getAccountMnemonic(),
-      },
+      // accounts: {
+      //   mnemonic: getAccountMnemonic(),
+      // },
     }
   }
 }
@@ -91,9 +91,9 @@ const config = {
       gas: 11000000,
       gasPrice: 'auto',
       blockGasLimit: 12000000,
-      accounts: {
-        mnemonic: networkConfig.mnemonic,
-      },
+      // accounts: {
+      //   mnemonic: networkConfig.mnemonic,
+      // },
     },
     ganache: {
       chainId: 1337,
