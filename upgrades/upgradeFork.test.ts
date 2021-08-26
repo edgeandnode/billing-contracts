@@ -9,7 +9,7 @@ import { addresses } from '../utils/addresses'
 import { Billing } from '../build/types/Billing'
 import { Token } from '../build/types/Token'
 import { BillingV1 } from './BillingV1'
-import { getAllDepositors } from '../tasks/ops/ops'
+import { getAllDepositors } from '../tasks/ops/pullMany'
 import { logger } from '../utils/logging'
 
 const { contracts } = hre

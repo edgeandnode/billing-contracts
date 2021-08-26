@@ -1,3 +1,4 @@
+import fs from 'fs'
 import axios from 'axios'
 import inquirer from 'inquirer'
 import { BigNumber, utils, Contract } from 'ethers'
@@ -37,7 +38,7 @@ export async function getAllDepositors(): Promise<Depositor[]> {
   })
 }
 
-async function ask(message: string): Promise<boolean> {
+export async function ask(message: string): Promise<boolean> {
   const res = await inquirer.prompt({
     name: 'confirm',
     type: 'confirm',
@@ -49,12 +50,23 @@ async function ask(message: string): Promise<boolean> {
 task('ops:pull-many:tx', 'Generate transaction data for pulling all funds from users')
   .addParam('dstAddress', 'Destination address of withdrawal')
   .setAction(async (taskArgs, hre: HardhatRuntimeEnvironment) => {
-    const { contracts } = hre
+    const accounts = await hre.ethers.getSigners()
+    const gateway = accounts[0]
 
     logger.log('Getting depositors...')
     const depositors = await getAllDepositors()
     const users = []
     const balances = []
+
+    try {
+      const path = './tasks/ops/depositors.json'
+      if (fs.existsSync(path)) fs.unlinkSync(path)
+      fs.writeFileSync('./tasks/ops/depositors.json', JSON.stringify(depositors, null, 2), { flag: 'a+' })
+    } catch (e) {
+      console.log(`Error saving artifacts: ${e.message}`)
+    }
+
+    // console.log(depositors)
 
     depositors.forEach((depositor) => {
       users.push(depositor.address)
@@ -71,23 +83,17 @@ task('ops:pull-many:tx', 'Generate transaction data for pulling all funds from u
     // Setup old billing
     const oldBilling = new Contract(addresses.mainnet.maticBillingOld, BillingV1)
 
-    // Transaction data for pullMany
-
-    if (await ask('Print <pullMany> transaction data?')) {
-      logger.log('Transaction payload')
-      logger.log(`--------------------`)
-      const payload = await oldBilling.populateTransaction.pullMany(users, balances, taskArgs.dstAddress)
-      logger.log(payload)
-    } else {
-      logger.log('Bye!')
+    if (taskArgs.dstAddress != '0x76c00f71f4dace63fd83ec80dbc8c30a88b2891c') {
+      logger.error('Wrong gateway address')
+      process.exit()
     }
 
-    // Transaction data for addToMany
-    if (await ask('Print <addToMany> transaction data?')) {
-      logger.log('Transaction payload')
+    if (await ask('Execute <pullMany> transaction? **This will execute on mainnet matic**')) {
+      logger.log('Transaction being sent')
       logger.log(`--------------------`)
-      const payload = await contracts.Billing.populateTransaction.addToMany(users, balances)
-      logger.log(payload)
+      const tx = await oldBilling.connect(gateway).pullMany(users, balances, taskArgs.dstAddress)
+      const receipt = await tx.wait()
+      logger.log(receipt)
     } else {
       logger.log('Bye!')
     }

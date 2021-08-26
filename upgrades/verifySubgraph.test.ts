@@ -6,7 +6,7 @@ import { BigNumber, Contract } from 'ethers'
 import { Account, getAccounts } from '../utils/helpers'
 import { addresses } from '../utils/addresses'
 import { BillingV1 } from './BillingV1'
-import { getAllDepositors } from '../tasks/ops/ops'
+import { getAllDepositors } from '../tasks/ops/pullMany'
 import { logger } from '../utils/logging'
 
 describe('Subgraph - Confirm subgraph matches contract data', () => {
