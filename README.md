@@ -38,13 +38,30 @@ Run the test suite with:
 yarn test
 ```
 
-There is also a test to check an upgrade of one billing contract to another goes smoothly. It uses
+There is a test to check an upgrade of one billing contract to another goes smoothly. It uses
 hardhats forked mainnet feature. In this case we fork matic mainnet. To test this, first make
 sure `.env` is filled out with `MATIC_ARCHIVE_URL` with no quotes. Then run:
 ```bash
 yarn test:upgrade
 ```
 
+There is another test to check if the subgraph has the correct values that are stored in the
+contract. This can be ran with:
+```bash
+npx hardhat test upgrades/verifySubgraph.test.ts --network matic
+```
+
+## Ops
+There are two scripts to run an upgrade of the Billing contract. It pulls all tokens from the old
+billing, and adds these tokens to all the users in the new contract. Here are the commands required
+to execute the upgrade:
+```bash
+yarn
+yarn build
+npx hardhat ops:pull-many:tx --dst-address 0x76c00f71f4dace63fd83ec80dbc8c30a88b2891c --network matic
+npx hardhat ops:add-to-many:tx --network matic
+```
+> Note ops:pull-many:tx will create a file with all users at /tasks/ops/depositors.json
 ## Using the console
 Here is how to use hardhat to quickly do some transactions:
 
