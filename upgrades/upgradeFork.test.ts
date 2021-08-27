@@ -9,7 +9,7 @@ import { addresses } from '../utils/addresses'
 import { Billing } from '../build/types/Billing'
 import { Token } from '../build/types/Token'
 import { BillingV1 } from './BillingV1'
-import { getAllDepositors } from '../tasks/ops/ops'
+import { getAllDepositors } from '../tasks/ops/pullMany'
 import { logger } from '../utils/logging'
 
 const { contracts } = hre
@@ -22,27 +22,34 @@ describe('Billing matic-fork upgrade', () => {
   const amounts: BigNumber[] = []
   let totalAmount: BigNumber
 
+  async function connectToForkedMainnet() {
+    const provider = new providers.JsonRpcProvider()
+    try {
+      await provider.send('hardhat_impersonateAccount', [deployConfig.billing.params.gatewayAddress])
+      const signer: Signer = await provider.getSigner(deployConfig.billing.params.gatewayAddress)
+      const address = await signer.getAddress()
+      gateway = { signer, address }
+      logger.log('Connected to fork!')
+    } catch (e) {
+      logger.error('Connecting to forked mainnet provider failed. Trying again in 3 seconds....')
+      setTimeout(await connectToForkedMainnet, 3000)
+    }
+  }
+
   before(async function () {
     const depositors = await getAllDepositors()
     depositors.forEach((depositor) => {
       users.push(depositor.address)
       amounts.push(depositor.balance)
     })
-
     totalAmount = amounts.reduce((a, b) => a.add(b), BigNumber.from(0))
-
-    const provider = new providers.JsonRpcProvider()
-    await provider.send('hardhat_impersonateAccount', [deployConfig.billing.params.gatewayAddress])
-    const signer: Signer = await provider.getSigner(deployConfig.billing.params.gatewayAddress)
-    const address = await signer.getAddress()
-    gateway = { signer, address }
-
+    await connectToForkedMainnet()
     billing = contracts.Billing
     token = contracts.Token
   })
 
   describe('addToMany() & pullMany()', function () {
-    this.timeout(0) // takes up to 50 seconds per test, so we remove timeout
+    this.timeout(0) // takes up to 2 minutes, so we remove timeout
     it('should pull many from old billing', async function () {
       // setup
       const oldBilling = new Contract(addresses.mainnet.maticBillingOld, BillingV1, gateway.signer)
@@ -51,14 +58,15 @@ describe('Billing matic-fork upgrade', () => {
       const beforeUserBalances: BigNumber[] = []
       for (let i = 0; i < users.length; i++) {
         beforeUserBalances.push(await oldBilling.userBalances(users[i]))
+        if (i % 10 == 0) logger.log(`${i} user balances received...`)
       }
 
       // Pull to the gateway address
       try {
-        await oldBilling.pullMany(users, amounts, gateway.address)
+        await oldBilling.pullMany(users, amounts, gateway.address, { gasLimit: 12000000 })
         logger.log('Pull many tx successful!')
-      } catch {
-        logger.error('Pull many tx failed')
+      } catch (e) {
+        logger.error('Pull many tx failed\n', e)
         process.exit()
       }
 
@@ -84,10 +92,10 @@ describe('Billing matic-fork upgrade', () => {
 
       // Add to many users
       try {
-        await billing.connect(gateway.signer).addToMany(users, amounts)
+        await billing.connect(gateway.signer).addToMany(users, amounts, { gasLimit: 10000000 })
         logger.log('Add to many tx successful!')
-      } catch {
-        logger.error('Add to many tx failed')
+      } catch (e) {
+        logger.error('Add to many tx failed\n', e)
         process.exit()
       }
 

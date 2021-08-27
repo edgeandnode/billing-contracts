@@ -20,3 +20,6 @@ bin/
 
 # Reports
 /reports
+
+# scripts
+tasks/ops/depositors.json
