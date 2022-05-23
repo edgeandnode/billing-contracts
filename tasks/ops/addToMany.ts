@@ -29,7 +29,7 @@ task('ops:add-to-many:tx', 'Generate transaction data for pulling all funds from
       logger.log(depositor.address, utils.formatEther(depositor.balance.hex))
     }
 
-    if (await ask('Execute <addToMany> transaction? **This will execute on mainnet matic**')) {
+    if (await ask(`Execute <addToMany> transaction? **This will execute on mainnet matic** from ${gateway.address}`)) {
       try {
         logger.log('Transaction being sent')
         logger.log(`--------------------`)

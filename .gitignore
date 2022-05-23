@@ -23,3 +23,4 @@ bin/
 
 # scripts
 tasks/ops/depositors.json
+tasks/ops/spreadsheet.csv

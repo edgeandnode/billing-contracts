@@ -18,7 +18,7 @@ import 'hardhat-abi-exporter'
 const SKIP_LOAD = process.env.SKIP_LOAD === 'true'
 
 if (!SKIP_LOAD) {
-  ;['deployment', 'ops'].forEach((folder) => {
+  ['deployment', 'ops'].forEach((folder) => {
     const tasksPath = path.join(__dirname, 'tasks', folder)
     fs.readdirSync(tasksPath)
       .filter((pth) => pth.includes('.ts'))
@@ -61,9 +61,10 @@ function setupNetworkConfig(config) {
       url: netConfig.url ? netConfig.url : getProviderURL(netConfig.network),
       gas: netConfig.gas || 'auto',
       gasPrice: netConfig.gasPrice || 'auto',
-      accounts: {
-        mnemonic: getAccountMnemonic(),
-      },
+      accounts: [process.env.PRIVATE_KEY],
+      // accounts: {
+      //   mnemonic: getAccountMnemonic(),
+      // },
     }
   }
 }
