@@ -41,13 +41,19 @@ interface NetworkConfig {
 const networkConfigs: NetworkConfig[] = [
   { network: 'mainnet', chainId: 1 },
   { network: 'goerli', chainId: 5 },
-  { network: 'matic', chainId: 137, url: process.env.MATIC_ARCHIVE_URL },
-  { network: 'mumbai', chainId: 80001, url: 'https://rpc-mumbai.maticvigil.com' },
-  { network: 'matic-fork', chainId: 1337, url: 'http://127.0.0.1:8545/' },
+  { network: 'matic', chainId: 137, url: process.env.POLYGON_RPC_URL },
+  { network: 'mumbai', chainId: 80001, url: process.env.POLYGON_RPC_URL },
+  {
+    network: 'arb-mainnet',
+    chainId: 42161,
+    url: process.env.ARBITRUM_RPC_URL,
+  },
 ]
 
-function getAccountMnemonic() {
-  return process.env.MNEMONIC || ''
+function getAccountsKeys() {
+  if (process.env.MNEMONIC) return { mnemonic: process.env.MNEMONIC }
+  if (process.env.PRIVATE_KEY) return [process.env.PRIVATE_KEY]
+  return ''
 }
 
 function getProviderURL(network: string) {
@@ -61,9 +67,7 @@ function setupNetworkConfig(config) {
       url: netConfig.url ? netConfig.url : getProviderURL(netConfig.network),
       gas: netConfig.gas || 'auto',
       gasPrice: netConfig.gasPrice || 'auto',
-      accounts: {
-        mnemonic: getAccountMnemonic(),
-      },
+      accounts: getAccountsKeys(),
     }
   }
 }
@@ -101,7 +105,10 @@ const config = {
     },
   },
   etherscan: {
-    apiKey: process.env.ETHERSCAN_API_KEY,
+    apiKey: {
+      mainnet: process.env.ETHERSCAN_API_KEY,
+      arbitrumOne: process.env.ARBISCAN_API_KEY,
+    },
   },
   abiExporter: {
     path: './build/abis',
