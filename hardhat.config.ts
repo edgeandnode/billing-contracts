@@ -53,7 +53,7 @@ const networkConfigs: NetworkConfig[] = [
 function getAccountsKeys() {
   if (process.env.MNEMONIC) return { mnemonic: process.env.MNEMONIC }
   if (process.env.PRIVATE_KEY) return [process.env.PRIVATE_KEY]
-  return ''
+  return 'remote'
 }
 
 function getProviderURL(network: string) {
