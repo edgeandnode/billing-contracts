@@ -3,7 +3,6 @@ import fs from 'fs'
 import * as dotenv from 'dotenv'
 
 import 'hardhat/types/runtime'
-import { networkConfig } from './utils/config'
 
 dotenv.config()
 
@@ -18,7 +17,7 @@ import 'hardhat-abi-exporter'
 const SKIP_LOAD = process.env.SKIP_LOAD === 'true'
 
 if (!SKIP_LOAD) {
-  ;['deployment', 'ops'].forEach((folder) => {
+  ;['deployment'].forEach((folder) => {
     const tasksPath = path.join(__dirname, 'tasks', folder)
     fs.readdirSync(tasksPath)
       .filter((pth) => pth.includes('.ts'))
@@ -41,7 +40,7 @@ interface NetworkConfig {
 const networkConfigs: NetworkConfig[] = [
   { network: 'mainnet', chainId: 1 },
   { network: 'goerli', chainId: 5 },
-  { network: 'matic', chainId: 137, url: process.env.POLYGON_RPC_URL },
+  { network: 'polygon', chainId: 137, url: process.env.POLYGON_RPC_URL },
   { network: 'mumbai', chainId: 80001, url: process.env.POLYGON_RPC_URL },
   {
     network: 'arb-mainnet',
@@ -96,12 +95,12 @@ const config = {
       gasPrice: 'auto',
       blockGasLimit: 12000000,
       accounts: {
-        mnemonic: networkConfig.mnemonic,
+        mnemonic: 'myth like bonus scare over problem client lizard pioneer submit female collect',
       },
     },
     ganache: {
       chainId: 1337,
-      url: networkConfig.providerUrl,
+      url: 'http://localhost:8545',
     },
   },
   etherscan: {

@@ -13,12 +13,9 @@ declare module 'hardhat/types/runtime' {
 }
 
 extendEnvironment((hre: HardhatRuntimeEnvironment) => {
+  const networkName = hre.network.name
+  const addressBook = addresses[networkName]
   hre['contracts'] = lazyObject(() => {
-    // 137 = matic. 1337 = hardhat & hardhat-matic-fork
-    if (hre.network.config.chainId == 137 || hre.network.config.chainId == 1337) {
-      return loadContracts(addresses.mainnet.maticBilling, addresses.mainnet.maticGRT, hre.ethers.provider)
-    } else if (hre.network.config.chainId == 80001) {
-      return loadContracts(addresses.testnet.mumbaiBilling, addresses.testnet.mumbaiDummyERC20, hre.ethers.provider)
-    }
+    return loadContracts(addressBook.billing, addressBook.grt, hre.ethers.provider)
   })
 })
