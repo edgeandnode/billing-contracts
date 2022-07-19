@@ -1,12 +1,11 @@
 import '@nomiclabs/hardhat-waffle'
 
 import { expect } from 'chai'
-import { BigNumber, constants } from 'ethers'
+import { BigNumber, constants, Contract } from 'ethers'
 import * as deployment from '../utils/deploy'
 import { getAccounts, Account, toGRT } from '../utils/helpers'
 
-import { Billing } from '../build/types/Billing'
-import { Token } from '../build/types/Token'
+import { Billing } from '../build/types/contracts/Billing'
 
 const { AddressZero } = constants
 
@@ -21,7 +20,7 @@ describe('Billing', () => {
 
   let billing: Billing
 
-  let token: Token
+  let token: Contract
 
   before(async function () {
     ;[me, gateway1, gateway2, user1, user2, user3, governor] = await getAccounts()
@@ -38,6 +37,7 @@ describe('Billing', () => {
     await token.connect(me.signer).transfer(user2.address, oneMillion)
     await token.connect(user1.signer).approve(billing.address, oneMillion)
     await token.connect(user2.signer).approve(billing.address, oneMillion)
+    await token.connect(user3.signer).approve(billing.address, oneMillion)
   })
 
   describe('admin', function () {
@@ -158,7 +158,7 @@ describe('Billing', () => {
 
       await token.connect(user1.signer).approve(billing.address, 0)
       const tx = billing.connect(user1.signer).addToMany(users, amounts)
-      await expect(tx).revertedWith('ERC20: transfer amount exceeds allowance')
+      await expect(tx).revertedWith('ERC20: insufficient allowance')
     })
   })
 
