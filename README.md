@@ -1,7 +1,6 @@
 # Billing Contract
 
-This repository contains a Billing contract. It allows users to add tokens (GRT) into the contract for an agent to pull when
-a billing period is up.
+This repository contains a Billing contract. It allows users to add tokens (GRT) into the contract for an agent to pull when a billing period is up.
 
 ## Contract Design
 
@@ -59,7 +58,7 @@ Then run:
 ```
 hh verify --network <NETWORK_NAME> \
     <NEW_DEPLOYED_ADDRESS> \
-    <GOVERNOR_ADDRESS> \
     <GATEWAY_ADDRESS> \
-    <GRT_ADDRESS>
+    <GRT_ADDRESS> \
+    <GOVERNOR_ADDRESS>
 ```

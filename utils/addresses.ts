@@ -15,4 +15,9 @@ export const addresses = {
     grt: '0x5fe2B58c013d7601147DcdD68C143A77499f5531',
     billing: '0x10829DB618E6F520Fa3A01c75bC6dDf8722fA9fE',
   },
+  mumbai: {
+    goerliGRT: '0x5c946740441c12510a167b447b7de565c20b9e3c',
+    grt: '0xdd1caa28a2af2c05b723be642b90f77bf1d6eb9f',
+    billing: '0x69ccB949a45dBE759DEfE7cb9f5E62031A3E28DA',
+  },
 }
