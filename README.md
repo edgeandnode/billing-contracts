@@ -7,17 +7,29 @@ This repository contains a Billing contract. It allows users to add tokens (GRT)
 The contract is designed with the following requirements:
 
 - The contract is owned by the `governor`.
-- There is a privileged role named `gateway` that has a special permission to pull user funds.
+- There is a privileged role named `collector` that has a special permission to pull user funds (this is, for now, the Gateway that acts as intermediary between Consumers and Indexers in The Graph Network).
 - Users add tokens into the contract by calling `add()`. It is important to note that the contract
-  is designed so that the users are trusting the Gateway. Once the user adds tokens, the Gateway can
+  is designed so that the users are trusting the Collector. Once the user adds tokens, the Collector can
   pull the funds whenever it wants.
-- The trust risk for the User is that the Gateway would pull funds before the User spent their funds, which are query fees in The Graph Network.
-- The trust risk for the Gateway is that the user adds funds, spends them on queries, and then
-  removes their tokens before the gateway pulled the tokens.
+- The trust risk for the User is that the Collector would pull funds before the User spent their funds, which are query fees in The Graph Network.
+- The trust risk for the Collector is that the user adds funds, spends them on queries, and then
+  removes their tokens before the Collector pulled the tokens.
 - These combined trust risks make for a situation that we expect both parties to act responsibly.
   It will always be recommended to keep the amount of GRT in the contract low for each user, and for
-  the Gateway to pull regularly. This way, if one side does not play nice, the funds lost won't be
+  the Collector to pull regularly. This way, if one side does not play nice, the funds lost won't be
   that large.
+
+## L1-L2 communication
+
+- The Billing contract is designed to be deployed to an L2 (Arbitrum)
+- A BillingConnector contract can be deployed to L1 (mainnet), and allows users to add funds to the Billing contract using a token gateway that allows callhooks as described in [GIP-0031](https://forum.thegraph.com/t/gip-0031-arbitrum-grt-bridge/3305)
+
+To add tokens from L1 to L2, there are two options:
+
+a) if the user's addresses / accounts in L1 and L2 are the same, they can use [BillingConnector.addToL2WithPermit](./contracts/IBillingConnector.sol#L35-L57). They first need to sign a permit for the BillingConnector contract to pull the GRT, and then run the tx including that signature, which will send those GRT to the billing balance for that same address in L2
+b) if the user's addresses / accounts in L1 and L2 are different (e.g. if the L1 address is a multisig that doesn't exist in L2, and they want to use a different address that does exist in L2 as their billing account), then they can use [BillingConnector.addToL2](./contracts/IBillingConnector.sol#L18-L33), but they need to run `GraphToken.approve(billingConnector.address, amount)` beforehand.
+
+To estimate the L2 submission and gas parameters (`_maxGas`, `_gasPriceBid`, and `_maxSubmissionCost`), we recommend using the [Arbitrum SDK](https://github.com/OffchainLabs/arbitrum-sdk). An example for this is available in the [graphprotocol/contracts](https://github.com/graphprotocol/contracts/blob/pcv/l2-bridge/cli/commands/bridge/to-l2.ts#L63-L94) repo - just replace the calldata with the [calldata produced by BillingConnector](./test/billingConnector.test.ts#L277-L284)
 
 ## Testing
 
@@ -46,19 +58,46 @@ await billing.add('1000000000000000000')
 
 To deploy, see these instructions:
 
+Use arb-mainnet to deploy Billing:
+
 ```
-hh deploy-billing --network <NETWORK_NAME> \
+hh deploy-billing --network arb-mainnet \
+    --collector <COLLECTOR_ADDRESS> \
+    --token <GRT_ADDRESS> \
     --governor <GOVERNOR_ADDRESS> \
-    --gateway <GATEWAY_ADDRESS> \
-    --token <GRT_ADDRESS>
+    --tokenGateway <L2GRAPHTOKENGATEWAY_ADDRESS>
 ```
 
-Then run:
+Then run this to verify on Etherscan:
 
 ```
-hh verify --network <NETWORK_NAME> \
+hh verify --network arb-mainnet \
     <NEW_DEPLOYED_ADDRESS> \
-    <GATEWAY_ADDRESS> \
+    <COLLECTOR_ADDRESS> \
     <GRT_ADDRESS> \
-    <GOVERNOR_ADDRESS>
+    <GOVERNOR_ADDRESS> \
+    <L2GRAPHTOKENGATEWAY_ADDRESS>
+```
+
+
+Use mainnet to deploy BillingConnector:
+
+```
+hh deploy-billing-connector --network mainnet \
+    --tokenGateway <L1GRAPHTOKENGATEWAY_ADDRESS> \
+    --billing <L2_BILLING_ADDRESS> \
+    --token <GRT_ADDRESS> \
+    --governor <GOVERNOR_ADDRESS>
+```
+
+Then run this to verify on Etherscan:
+
+```
+hh verify --network mainnet \
+    <NEW_DEPLOYED_ADDRESS> \
+    <L1GRAPHTOKENGATEWAY_ADDRESS> \
+    <L2_BILLING_ADDRESS> \
+    <GRT_ADDRESS> \
+    <GOVERNOR_ADDRESS> \
+    <L2GRAPHTOKENGATEWAY_ADDRESS>
 ```

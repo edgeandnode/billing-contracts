@@ -7,7 +7,7 @@ import { Billing } from '../build/types/contracts/Billing'
 const hash = (input: string): string => utils.keccak256(`0x${input.replace(/^0x/, '')}`)
 
 async function deployContract(
-  args: Array<any>,
+  args: Array<string>,
   sender: Signer,
   name: string,
   disableLogging?: boolean,
@@ -33,11 +33,29 @@ async function deployContract(
 }
 
 // Pass the args in order to this func
-export async function deployBilling(args: Array<any>, sender: Signer, disableLogging?: boolean): Promise<Billing> {
+export async function deployBilling(args: Array<string>, sender: Signer, disableLogging?: boolean): Promise<Billing> {
   return deployContract(args, sender, 'Billing', disableLogging) as unknown as Promise<Billing>
 }
 
 // Pass the args in order to this func
-export async function deployToken(args: Array<any>, sender: Signer, disableLogging?: boolean): Promise<Contract> {
+export async function deployBillingConnector(
+  args: Array<string>,
+  sender: Signer,
+  disableLogging?: boolean,
+): Promise<Billing> {
+  return deployContract(args, sender, 'BillingConnector', disableLogging) as unknown as Promise<Billing>
+}
+
+// Pass the args in order to this func
+export async function deployToken(args: Array<string>, sender: Signer, disableLogging?: boolean): Promise<Contract> {
   return deployContract(args, sender, 'Token', disableLogging) as unknown as Promise<Contract>
+}
+
+// Pass the args in order to this func
+export async function deployL1TokenGatewayMock(
+  args: Array<string>,
+  sender: Signer,
+  disableLogging?: boolean,
+): Promise<Contract> {
+  return deployContract(args, sender, 'L1TokenGatewayMock', disableLogging) as unknown as Promise<Contract>
 }

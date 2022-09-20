@@ -9,6 +9,8 @@ echo "Flattening contracts..."
 FILES=(
     "contracts/Billing.sol"
     "contracts/IBilling.sol"
+    "contracts/BillingConnector.sol"
+    "contracts/IBillingConnector.sol"
 )
 
 for path in ${FILES[@]}; do

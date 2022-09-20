@@ -10,9 +10,9 @@ dotenv.config()
 
 import '@nomiclabs/hardhat-ethers'
 import '@nomiclabs/hardhat-etherscan'
-import '@nomiclabs/hardhat-waffle'
 import '@typechain/hardhat'
 import 'hardhat-abi-exporter'
+import '@nomicfoundation/hardhat-chai-matchers'
 import 'solidity-coverage'
 
 const SKIP_LOAD = process.env.SKIP_LOAD === 'true'
@@ -81,7 +81,7 @@ const config = {
     artifacts: './build/artifacts',
   },
   solidity: {
-    version: '0.8.4',
+    version: '0.8.16',
     optimizer: {
       enabled: true,
       runs: 200,

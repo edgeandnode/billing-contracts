@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.16;
 
 interface IBilling {
     /**
-     * @dev Set the new gateway address
-     * @param _newGateway  New gateway address
+     * @dev Set or unset an address as an allowed Collector
+     * @param _collector  Collector address
+     * @param _enabled True to set the _collector address as a Collector, false to remove it
      */
-    function setGateway(address _newGateway) external; // onlyGateway or onlyGovernor, or something
+    function setCollector(address _collector, bool _enabled) external; // onlyGovernor
 
     /**
      * @dev Add tokens into the billing contract
@@ -21,6 +22,14 @@ interface IBilling {
      * @param _amount  Amount of tokens to add
      */
     function addTo(address _to, uint256 _amount) external;
+
+    /**
+     * @dev Add tokens into the billing contract for any user, from L1
+     * This can only be called from L2GraphTokenGateway.finalizeInboundTransfer.
+     * @param _user  Address that tokens are being added to
+     * @param _amount  Amount of tokens to add
+     */
+    function addFromL1(address _user, uint256 _amount) external;
 
     /**
      * @dev Add tokens into the billing contract in bulk
@@ -38,7 +47,7 @@ interface IBilling {
     function remove(address _to, uint256 _amount) external;
 
     /**
-     * @dev Gateway pulls tokens from the billing contract
+     * @dev Collector pulls tokens from the billing contract
      * @param _user  Address that tokens are being pulled from
      * @param _amount  Amount of tokens to pull
      * @param _to Destination to send pulled tokens
@@ -50,7 +59,7 @@ interface IBilling {
     ) external;
 
     /**
-     * @dev Gateway pulls tokens from many users in the billing contract
+     * @dev Collector pulls tokens from many users in the billing contract
      * @param _users  Addresses that tokens are being pulled from
      * @param _amounts  Amounts of tokens to pull from each user
      * @param _to Destination to send pulled tokens
