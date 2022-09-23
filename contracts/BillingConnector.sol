@@ -9,6 +9,7 @@ import { Governed } from "./Governed.sol";
 import { ITokenGateway } from "arb-bridge-peripherals/contracts/tokenbridge/libraries/gateway/ITokenGateway.sol";
 import { Rescuable } from "./Rescuable.sol";
 import { IERC20WithPermit } from "./IERC20WithPermit.sol";
+import { L1ArbitrumMessenger } from "./arbitrum/L1ArbitrumMessenger.sol";
 
 /**
  * @title Billing Connector Contract
@@ -16,7 +17,7 @@ import { IERC20WithPermit } from "./IERC20WithPermit.sol";
  * tokens are immediately sent to the Billing contract on L2 (Arbitrum)
  * through the GRT token bridge.
  */
-contract BillingConnector is IBillingConnector, Governed, Rescuable {
+contract BillingConnector is IBillingConnector, Governed, Rescuable, L1ArbitrumMessenger {
     // -- State --
     // The contract for interacting with The Graph Token
     IERC20 private immutable graphToken;
@@ -24,6 +25,8 @@ contract BillingConnector is IBillingConnector, Governed, Rescuable {
     ITokenGateway public l1TokenGateway;
     // The Billing contract in L2 to which we send tokens
     address public l2Billing;
+    // The Arbitrum Delayed Inbox address
+    address public inbox;
 
     /**
      * @dev Address of the L1 token gateway was updated
@@ -34,9 +37,17 @@ contract BillingConnector is IBillingConnector, Governed, Rescuable {
      */
     event L2BillingUpdated(address l2Billing);
     /**
+     * @dev Address of the Arbitrum Inbox contract was updated
+     */
+    event ArbitrumInboxUpdated(address inbox);
+    /**
      * @dev Tokens sent to the Billing contract on L2
      */
     event TokensSentToL2(address indexed _from, address indexed _to, uint256 _amount);
+    /**
+     * @dev Request sent to the Billing contract on L2 to remove tokens from the balance
+     */
+    event TokensRemovedOnL2(address indexed _from, address indexed _to, uint256 _amount);
 
     /**
      * @dev Constructor function
@@ -44,15 +55,18 @@ contract BillingConnector is IBillingConnector, Governed, Rescuable {
      * @param _l2Billing Address of the Billing contract on L2
      * @param _token     Graph Token address
      * @param _governor  Governor address
+     * @param _inbox Arbitrum Delayed Inbox address
      */
     constructor(
         address _l1TokenGateway,
         address _l2Billing,
         IERC20 _token,
-        address _governor
+        address _governor,
+        address _inbox
     ) Governed(_governor) {
         _setL1TokenGateway(_l1TokenGateway);
         _setL2Billing(_l2Billing);
+        _setArbitrumInbox(_inbox);
         graphToken = _token;
     }
 
@@ -70,6 +84,14 @@ contract BillingConnector is IBillingConnector, Governed, Rescuable {
      */
     function setL2Billing(address _l2Billing) external override onlyGovernor {
         _setL2Billing(_l2Billing);
+    }
+
+    /**
+     * @dev Sets the Arbitrum Delayed Inbox address
+     * @param _inbox New address for the L2 Billing contract
+     */
+    function setArbitrumInbox(address _inbox) external override onlyGovernor {
+        _setArbitrumInbox(_inbox);
     }
 
     /**
@@ -91,6 +113,34 @@ contract BillingConnector is IBillingConnector, Governed, Rescuable {
         require(_amount != 0, "Must add more than 0");
         require(_to != address(0), "destination != 0");
         _addToL2(msg.sender, _to, _amount, _maxGas, _gasPriceBid, _maxSubmissionCost);
+    }
+
+    /**
+     * @dev Remove tokens from the billing contract on L2, sending the tokens
+     * to an L2 address. Useful when the tokens are in the balance for an address
+     * that doesn't exist in L2.
+     * @param _to  L2 address to which the tokens (and any surplus ETH) will be sent
+     * @param _amount  Amount of tokens to remove
+     * @param _maxGas Max gas for the L2 retryable ticket execution
+     * @param _gasPriceBid Gas price for the L2 retryable ticket execution
+     * @param _maxSubmissionCost Max submission price for the L2 retryable ticket
+     */
+    function removeOnL2(
+        address _to,
+        uint256 _amount,
+        uint256 _maxGas,
+        uint256 _gasPriceBid,
+        uint256 _maxSubmissionCost
+    ) external payable override {
+        require(_amount != 0, "Must remove more than 0");
+        require(_to != address(0), "destination != 0");
+
+        bytes memory l2Calldata = abi.encodeWithSelector(IBilling.removeFromL1.selector, msg.sender, _to, _amount);
+
+        L2GasParams memory gasParams = L2GasParams(_maxSubmissionCost, _maxGas, _gasPriceBid);
+
+        sendTxToL2(inbox, l2Billing, _to, msg.value, 0, gasParams, l2Calldata);
+        emit TokensRemovedOnL2(msg.sender, _to, _amount);
     }
 
     /**
@@ -191,5 +241,14 @@ contract BillingConnector is IBillingConnector, Governed, Rescuable {
         require(_l2Billing != address(0), "L2 Billing cannot be zero");
         l2Billing = _l2Billing;
         emit L2BillingUpdated(_l2Billing);
+    }
+
+    /**
+     * @dev Sets the Arbitrum Delayed Inbox address
+     * @param _inbox New address for the L2 Billing contract
+     */
+    function _setArbitrumInbox(address _inbox) internal {
+        inbox = _inbox;
+        emit ArbitrumInboxUpdated(_inbox);
     }
 }

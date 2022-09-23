@@ -123,11 +123,13 @@ describe('BillingConnector', () => {
       me.signer,
       true,
     )) as unknown as L1TokenGatewayMock
+    // TODO replace user2.address below with the Arbitrum Inbox mock!!
     billingConnector = (await deployment.deployBillingConnector(
-      [l1TokenGatewayMock.address, l2BillingMock.address, token.address, governor.address],
+      [l1TokenGatewayMock.address, l2BillingMock.address, token.address, governor.address, user2.address],
       me.signer,
       true,
     )) as unknown as BillingConnector
+
     await token.connect(me.signer).transfer(user1.address, oneMillion)
     await token.connect(me.signer).transfer(user2.address, oneMillion)
     await token.connect(me.signer).transfer(user3.address, oneMillion)

@@ -7,6 +7,7 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { IBilling } from "./IBilling.sol";
 import { Governed } from "./Governed.sol";
 import { Rescuable } from "./Rescuable.sol";
+import { AddressAliasHelper } from "./arbitrum/AddressAliasHelper.sol";
 
 /**
  * @title Billing Contract
@@ -26,6 +27,9 @@ contract Billing is IBilling, Governed, Rescuable {
 
     // The L2 token gateway address
     address public l2TokenGateway;
+
+    // The L1 BillingConnector address
+    address public l1BillingConnector;
 
     // -- Events --
 
@@ -54,7 +58,15 @@ contract Billing is IBilling, Governed, Rescuable {
     event L2TokenGatewayUpdated(address l2TokenGateway);
 
     /**
+     * @dev L1 BillingConnector address updated
+     */
+    event L1BillingConnectorUpdated(address l1BillingConnector);
+
+    /**
      * @dev Constructor function
+     * Note that the l1BillingConnector address must be provided
+     * afterwards through setL1BillingConnectr, since it's expected
+     * to be deployed after this one.
      * @param _collector   Initial collector address
      * @param _token     Graph Token address
      * @param _governor  Governor address
@@ -87,6 +99,18 @@ contract Billing is IBilling, Governed, Rescuable {
     }
 
     /**
+     * @dev Check if the caller is the L2 alias of the L1 BillingConnector
+     */
+    modifier onlyL1BillingConnector() {
+        require(l1BillingConnector != address(0), "BillingConnector not set");
+        require(
+            msg.sender == AddressAliasHelper.applyL1ToL2Alias(l1BillingConnector),
+            "Caller must be L1 BillingConnector"
+        );
+        _;
+    }
+
+    /**
      * @dev Set or unset an address as an allowed Collector
      * @param _collector  Collector address
      * @param _enabled True to set the _collector address as a Collector, false to remove it
@@ -101,6 +125,16 @@ contract Billing is IBilling, Governed, Rescuable {
      */
     function setL2TokenGateway(address _l2TokenGateway) external override onlyGovernor {
         _setL2TokenGateway(_l2TokenGateway);
+    }
+
+    /**
+     * @dev Sets the L1 Billing Connector address
+     * @param _l1BillingConnector New address for the L1 BillingConnector (without any aliasing!)
+     */
+    function setL1BillingConnector(address _l1BillingConnector) external override onlyGovernor {
+        require(_l1BillingConnector != address(0), "L1 Billing Connector cannot be 0");
+        l1BillingConnector = _l1BillingConnector;
+        emit L1BillingConnectorUpdated(_l1BillingConnector);
     }
 
     /**
@@ -131,6 +165,19 @@ contract Billing is IBilling, Governed, Rescuable {
     function addFromL1(address _user, uint256 _amount) external override onlyL2TokenGateway {
         _add(_user, _amount);
     }
+
+    /**
+     * @dev Remove tokens from the billing contract, from L1
+     * This can only be called from the BillingConnector on L1.
+     * @param _user  Address from which the tokens are removed
+     * @param _to Address to send the tokens
+     * @param _amount  Amount of tokens to remove
+     */
+    function removeFromL1(
+        address _user,
+        address _to,
+        uint256 _amount
+    ) external override onlyL1BillingConnector {}
 
     /**
      * @dev Add tokens into the billing contract in bulk
@@ -292,7 +339,7 @@ contract Billing is IBilling, Governed, Rescuable {
      * @param _l2TokenGateway  New L2 token gateway address
      */
     function _setL2TokenGateway(address _l2TokenGateway) internal {
-        require(_l2TokenGateway != address(0), "L1 Token Gateway cannot be 0");
+        require(_l2TokenGateway != address(0), "L2 Token Gateway cannot be 0");
         l2TokenGateway = _l2TokenGateway;
         emit L2TokenGatewayUpdated(_l2TokenGateway);
     }

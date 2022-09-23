@@ -16,6 +16,12 @@ interface IBillingConnector {
     function setL2Billing(address _l2Billing) external;
 
     /**
+     * @dev Sets the Arbitrum Delayed Inbox address
+     * @param _inbox New address for the L2 Billing contract
+     */
+    function setArbitrumInbox(address _inbox) external;
+
+    /**
      * @dev Add tokens into the billing contract on L2, for any user
      * Ensure graphToken.approve() is called for the BillingConnector contract first
      * @param _to  Address that tokens are being added to
@@ -25,6 +31,24 @@ interface IBillingConnector {
      * @param _maxSubmissionCost Max submission price for the L2 retryable ticket
      */
     function addToL2(
+        address _to,
+        uint256 _amount,
+        uint256 _maxGas,
+        uint256 _gasPriceBid,
+        uint256 _maxSubmissionCost
+    ) external payable;
+
+    /**
+     * @dev Remove tokens from the billing contract on L2, sending the tokens
+     * to an L2 address. Useful when the tokens are in the balance for an address
+     * that doesn't exist in L2.
+     * @param _to  L2 address to which the tokens will be sent
+     * @param _amount  Amount of tokens to remove
+     * @param _maxGas Max gas for the L2 retryable ticket execution
+     * @param _gasPriceBid Gas price for the L2 retryable ticket execution
+     * @param _maxSubmissionCost Max submission price for the L2 retryable ticket
+     */
+    function removeOnL2(
         address _to,
         uint256 _amount,
         uint256 _maxGas,

@@ -87,7 +87,7 @@ describe('Billing', () => {
 
     it('should fail to set L2 token gateway to the zero address', async function () {
       const tx = billing.connect(governor.signer).setL2TokenGateway(AddressZero)
-      await expect(tx).revertedWith('L1 Token Gateway cannot be 0')
+      await expect(tx).revertedWith('L2 Token Gateway cannot be 0')
     })
   })
 

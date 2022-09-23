@@ -17,6 +17,12 @@ interface IBilling {
     function setL2TokenGateway(address _l2TokenGateway) external;
 
     /**
+     * @dev Sets the L1 Billing Connector address
+     * @param _l1BillingConnector New address for the L1 BillingConnector (without any aliasing!)
+     */
+    function setL1BillingConnector(address _l1BillingConnector) external;
+
+    /**
      * @dev Add tokens into the billing contract
      * @param _amount  Amount of tokens to add
      */
@@ -36,6 +42,19 @@ interface IBilling {
      * @param _amount  Amount of tokens to add
      */
     function addFromL1(address _user, uint256 _amount) external;
+
+    /**
+     * @dev Remove tokens from the billing contract, from L1
+     * This can only be called from the BillingConnector on L1.
+     * @param _user  Address from which the tokens are removed
+     * @param _to Address to send the tokens
+     * @param _amount  Amount of tokens to remove
+     */
+    function removeFromL1(
+        address _user,
+        address _to,
+        uint256 _amount
+    ) external;
 
     /**
      * @dev Add tokens into the billing contract in bulk
