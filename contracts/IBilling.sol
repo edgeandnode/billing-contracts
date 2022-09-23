@@ -11,6 +11,12 @@ interface IBilling {
     function setCollector(address _collector, bool _enabled) external; // onlyGovernor
 
     /**
+     * @dev Sets the L2 token gateway address
+     * @param _l2TokenGateway New address for the L2 token gateway
+     */
+    function setL2TokenGateway(address _l2TokenGateway) external;
+
+    /**
      * @dev Add tokens into the billing contract
      * @param _amount  Amount of tokens to add
      */

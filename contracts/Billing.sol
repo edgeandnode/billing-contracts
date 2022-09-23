@@ -95,7 +95,11 @@ contract Billing is IBilling, Governed, Rescuable {
         _setCollector(_collector, _enabled);
     }
 
-    function setL2TokenGateway(address _l2TokenGateway) external onlyGovernor {
+    /**
+     * @dev Sets the L2 token gateway address
+     * @param _l2TokenGateway New address for the L2 token gateway
+     */
+    function setL2TokenGateway(address _l2TokenGateway) external override onlyGovernor {
         _setL2TokenGateway(_l2TokenGateway);
     }
 

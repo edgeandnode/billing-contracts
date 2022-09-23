@@ -36,7 +36,7 @@ contract BillingConnector is IBillingConnector, Governed, Rescuable {
     /**
      * @dev Tokens sent to the Billing contract on L2
      */
-    event TokensSentToL2(address _from, address _to, uint256 _amount);
+    event TokensSentToL2(address indexed _from, address indexed _to, uint256 _amount);
 
     /**
      * @dev Constructor function
@@ -180,7 +180,7 @@ contract BillingConnector is IBillingConnector, Governed, Rescuable {
     function _setL1TokenGateway(address _l1TokenGateway) internal {
         require(_l1TokenGateway != address(0), "L1 Token Gateway cannot be 0");
         l1TokenGateway = ITokenGateway(_l1TokenGateway);
-        emit L1TokenGatewayUpdated(address(_l1TokenGateway));
+        emit L1TokenGatewayUpdated(_l1TokenGateway);
     }
 
     /**
