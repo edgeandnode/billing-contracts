@@ -4,6 +4,7 @@
   "description": "Graph Studio Billing Contracts",
   "main": "index.js",
   "scripts": {
+    "prepare": "husky install",
     "prepublishOnly": "scripts/prepublish",
     "build": "SKIP_LOAD=true scripts/build",
     "clean": "rm -rf build/ cache/ dist/",
@@ -16,15 +17,29 @@
     "lint:fix": "yarn run lint:ts:fix && yarn run lint:sol:fix",
     "lint:ts": "eslint '*/**/*.{js,ts}'",
     "lint:ts:fix": "eslint '*/**/*.{js,ts}' --fix",
-    "lint:sol": "solium --dir ./contracts",
-    "lint:sol:fix": "solium --dir ./contracts --fix",
+    "lint:sol": "solhint 'contracts/**/*.sol'",
+    "lint:sol:fix": "yarn prettier:sol && solhint --fix 'contracts/**/*.sol'",
     "prettier": "yarn run prettier:ts && yarn run prettier:sol",
     "prettier:ts": "prettier --write 'test/**/*.ts'",
-    "prettier:sol": "prettier --write 'contracts/*.sol'",
+    "prettier:sol": "prettier --write 'contracts/**/*.sol'",
     "security": "scripts/security",
     "flatten": "scripts/flatten",
     "typechain": "hardhat typechain",
     "verify": "hardhat verify"
+  },
+  "lint-staged": {
+    "contracts/**/*.sol": [
+      "yarn lint:sol:fix"
+    ],
+    "**/*.ts": [
+      "yarn lint:ts:fix"
+    ],
+    "**/*.js": [
+      "yarn lint:ts:fix"
+    ],
+    "**/*.json": [
+      "yarn lint:ts:fix"
+    ]
   },
   "files": [
     "dist/**/*",
@@ -34,6 +49,8 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
+    "@commitlint/cli": "^17.1.2",
+    "@commitlint/config-conventional": "^17.1.0",
     "@nomiclabs/hardhat-ethers": "*",
     "@nomiclabs/hardhat-etherscan": "^3.1.0",
     "@nomiclabs/hardhat-waffle": "^2.0.1",
@@ -58,13 +75,18 @@
     "eslint-plugin-promise": "^6.0.0",
     "eslint-plugin-standard": "^5.0.0",
     "ethereum-waffle": "^3.1.1",
-    "ethers": "^5.4.5",
+    "ethers": "^5.6.0",
     "ethlint": "^1.2.5",
     "hardhat": "^2.10.1",
     "hardhat-abi-exporter": "^2.2.1",
+    "husky": "^8.0.1",
     "inquirer": "^8.1.2",
+    "lint-staged": "^13.0.3",
     "prettier": "^2.1.1",
     "prettier-plugin-solidity": "^1.0.0-alpha.56",
+    "solhint": "^3.3.7",
+    "solhint-plugin-prettier": "^0.0.5",
+    "solidity-coverage": "^0.8.2",
     "ts-node": "^10.0.0",
     "typechain": "^8.1.0",
     "typescript": "^4.0.2"

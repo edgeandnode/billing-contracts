@@ -13,6 +13,7 @@ import '@nomiclabs/hardhat-etherscan'
 import '@nomiclabs/hardhat-waffle'
 import '@typechain/hardhat'
 import 'hardhat-abi-exporter'
+import 'solidity-coverage'
 
 const SKIP_LOAD = process.env.SKIP_LOAD === 'true'
 

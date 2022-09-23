@@ -18,5 +18,6 @@ bin/
 .DS_Store
 .vscode
 
-# Reports
+# Coverage and other reports
 /reports
+coverage.json
