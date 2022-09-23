@@ -24,7 +24,7 @@ contract Governed {
     /**
      * @dev Check if the caller is the governor.
      */
-    modifier onlyGovernor {
+    modifier onlyGovernor() {
         require(msg.sender == governor, "Only Governor can call");
         _;
     }

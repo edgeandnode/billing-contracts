@@ -1,4 +1,4 @@
-const skipFiles = ['']
+const skipFiles = ['tests/']
 
 module.exports = {
   providerOptions: {
