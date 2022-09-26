@@ -1,4 +1,4 @@
-import { Contract, Signer, ContractFactory, utils } from 'ethers'
+import { Contract, Signer, ContractFactory, utils, BigNumber } from 'ethers'
 
 import { logger } from './logging'
 import { loadArtifact } from './artifacts'
@@ -7,7 +7,7 @@ import { Billing } from '../build/types/contracts/Billing'
 const hash = (input: string): string => utils.keccak256(`0x${input.replace(/^0x/, '')}`)
 
 async function deployContract(
-  args: Array<string>,
+  args: Array<string | BigNumber>,
   sender: Signer,
   name: string,
   disableLogging?: boolean,
@@ -33,7 +33,11 @@ async function deployContract(
 }
 
 // Pass the args in order to this func
-export async function deployBilling(args: Array<string>, sender: Signer, disableLogging?: boolean): Promise<Billing> {
+export async function deployBilling(
+  args: Array<string | BigNumber>,
+  sender: Signer,
+  disableLogging?: boolean,
+): Promise<Billing> {
   return deployContract(args, sender, 'Billing', disableLogging) as unknown as Promise<Billing>
 }
 
@@ -47,15 +51,37 @@ export async function deployBillingConnector(
 }
 
 // Pass the args in order to this func
-export async function deployToken(args: Array<string>, sender: Signer, disableLogging?: boolean): Promise<Contract> {
+export async function deployToken(
+  args: Array<string | BigNumber>,
+  sender: Signer,
+  disableLogging?: boolean,
+): Promise<Contract> {
   return deployContract(args, sender, 'Token', disableLogging) as unknown as Promise<Contract>
 }
 
 // Pass the args in order to this func
 export async function deployL1TokenGatewayMock(
-  args: Array<string>,
+  args: Array<string | BigNumber>,
   sender: Signer,
   disableLogging?: boolean,
 ): Promise<Contract> {
   return deployContract(args, sender, 'L1TokenGatewayMock', disableLogging) as unknown as Promise<Contract>
+}
+
+// Pass the args in order to this func
+export async function deployInboxMock(
+  args: Array<string | BigNumber>,
+  sender: Signer,
+  disableLogging?: boolean,
+): Promise<Contract> {
+  return deployContract(args, sender, 'InboxMock', disableLogging) as unknown as Promise<Contract>
+}
+
+// Pass the args in order to this func
+export async function deployBridgeMock(
+  args: Array<string | BigNumber>,
+  sender: Signer,
+  disableLogging?: boolean,
+): Promise<Contract> {
+  return deployContract(args, sender, 'BridgeMock', disableLogging) as unknown as Promise<Contract>
 }

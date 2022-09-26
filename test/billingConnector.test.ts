@@ -3,16 +3,24 @@ import hre from 'hardhat'
 import { expect } from 'chai'
 import { BigNumber, constants, Signature } from 'ethers'
 import * as deployment from '../utils/deploy'
-import { getAccounts, Account, toGRT, toBN } from '../utils/helpers'
+import { getAccounts, Account, toGRT, toBN, applyL1ToL2Alias } from '../utils/helpers'
 
-import { BillingConnector, L1TokenGatewayMock, Token } from '../build/types'
+import { BillingConnector, L1TokenGatewayMock, Token, InboxMock, BridgeMock } from '../build/types'
 
 const { AddressZero, MaxUint256 } = constants
 import { eip712 } from '@graphprotocol/common-ts/dist/attestations'
 
 import path from 'path'
 import { Artifacts } from 'hardhat/internal/artifacts'
-import { BytesLike, defaultAbiCoder, Interface, keccak256, SigningKey } from 'ethers/lib/utils'
+import {
+  BytesLike,
+  defaultAbiCoder,
+  hexDataLength,
+  Interface,
+  keccak256,
+  SigningKey,
+  solidityPack,
+} from 'ethers/lib/utils'
 
 const ARTIFACTS_PATH = path.resolve('build/artifacts/contracts')
 const artifacts = new Artifacts(ARTIFACTS_PATH)
@@ -74,6 +82,8 @@ describe('BillingConnector', () => {
   let billingConnector: BillingConnector
   let token: Token
   let l1TokenGatewayMock: L1TokenGatewayMock
+  let bridgeMock: BridgeMock
+  let inboxMock: InboxMock
 
   const myPrivateKey = '0x4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d'
   async function permitOK(value: BigNumber, from: string, to: string): Promise<Permit> {
@@ -116,16 +126,23 @@ describe('BillingConnector', () => {
   const defaultMaxSubmissionPrice = toBN('30')
   const defaultMsgValue = defaultMaxSubmissionPrice.add(defaultMaxGas.mul(defaultGasPriceBid))
 
+  const deployArbitrumMocks = async function () {
+    bridgeMock = (await deployment.deployBridgeMock([], me.signer, true)) as unknown as BridgeMock
+    inboxMock = (await deployment.deployInboxMock([], me.signer, true)) as unknown as InboxMock
+    await bridgeMock.connect(me.signer).setInbox(inboxMock.address, true)
+    await inboxMock.connect(me.signer).setBridge(bridgeMock.address)
+  }
+
   beforeEach(async function () {
+    await deployArbitrumMocks()
     token = (await deployment.deployToken([tenBillion], me.signer, true)) as unknown as Token
     l1TokenGatewayMock = (await deployment.deployL1TokenGatewayMock(
       [],
       me.signer,
       true,
     )) as unknown as L1TokenGatewayMock
-    // TODO replace user2.address below with the Arbitrum Inbox mock!!
     billingConnector = (await deployment.deployBillingConnector(
-      [l1TokenGatewayMock.address, l2BillingMock.address, token.address, governor.address, user2.address],
+      [l1TokenGatewayMock.address, l2BillingMock.address, token.address, governor.address, inboxMock.address],
       me.signer,
       true,
     )) as unknown as BillingConnector
@@ -140,6 +157,7 @@ describe('BillingConnector', () => {
       expect(await billingConnector.l1TokenGateway()).eq(l1TokenGatewayMock.address)
       const tx = billingConnector.connect(governor.signer).setL1TokenGateway(user2.address)
       await expect(tx).emit(billingConnector, 'L1TokenGatewayUpdated').withArgs(user2.address)
+      expect(await billingConnector.l1TokenGateway()).eq(user2.address)
     })
     it('rejects calls from someone other than the governor', async function () {
       const tx = billingConnector.connect(me.signer).setL1TokenGateway(user2.address)
@@ -155,6 +173,7 @@ describe('BillingConnector', () => {
       expect(await billingConnector.l2Billing()).eq(l2BillingMock.address)
       const tx = billingConnector.connect(governor.signer).setL2Billing(user3.address)
       await expect(tx).emit(billingConnector, 'L2BillingUpdated').withArgs(user3.address)
+      expect(await billingConnector.l2Billing()).eq(user3.address)
     })
     it('rejects calls from someone other than the governor', async function () {
       const tx = billingConnector.connect(me.signer).setL2Billing(user3.address)
@@ -163,6 +182,22 @@ describe('BillingConnector', () => {
     it('rejects calls to set L2 billing to zero', async function () {
       const tx = billingConnector.connect(governor.signer).setL2Billing(AddressZero)
       await expect(tx).revertedWith('L2 Billing cannot be zero')
+    })
+  })
+  describe('setArbitrumInbox', function () {
+    it('sets the inbox address', async function () {
+      expect(await billingConnector.inbox()).eq(inboxMock.address)
+      const tx = billingConnector.connect(governor.signer).setArbitrumInbox(user3.address)
+      await expect(tx).emit(billingConnector, 'ArbitrumInboxUpdated').withArgs(user3.address)
+      expect(await billingConnector.inbox()).eq(user3.address)
+    })
+    it('rejects calls from someone other than the governor', async function () {
+      const tx = billingConnector.connect(me.signer).setArbitrumInbox(user3.address)
+      await expect(tx).revertedWith('Only Governor can call')
+    })
+    it('rejects calls to set Arbitrum Inbox to zero', async function () {
+      const tx = billingConnector.connect(governor.signer).setArbitrumInbox(AddressZero)
+      await expect(tx).revertedWith('Arbitrum Inbox cannot be zero')
     })
   })
   describe('addToL2', function () {
@@ -489,6 +524,111 @@ describe('BillingConnector', () => {
       await token.connect(user1.signer).transfer(billingConnector.address, oneMillion)
       const tx = billingConnector.connect(governor.signer).rescueTokens(user1.address, token.address, toBN(0))
       await expect(tx).revertedWith('Cannot rescue 0 tokens')
+    })
+  })
+  describe('removeOnL2', function () {
+    const submitRetryableTxCode = 9
+    // createMsgData and createInboxAccsEntry copied/adapted from @graphprotocol/contracts
+    const createMsgData = function (user: string, msgCalldata: string) {
+      const msgData = solidityPack(
+        ['uint256', 'uint256', 'uint256', 'uint256', 'uint256', 'uint256', 'uint256', 'uint256', 'uint256', 'bytes'],
+        [
+          toBN(l2BillingMock.address),
+          toBN('0'),
+          defaultMsgValue,
+          defaultMaxSubmissionPrice,
+          applyL1ToL2Alias(user),
+          applyL1ToL2Alias(user),
+          defaultMaxGas,
+          defaultGasPriceBid,
+          hexDataLength(msgCalldata),
+          msgCalldata,
+        ],
+      )
+      return msgData
+    }
+    const createInboxAccsEntry = function (msgDataHash: string) {
+      // The real bridge would emit the InboxAccs entry that came before this one, but our mock
+      // emits this, making it easier for us to validate here that all the parameters we sent are correct
+      const expectedInboxAccsEntry = keccak256(
+        solidityPack(
+          ['address', 'uint8', 'address', 'bytes32'],
+          [inboxMock.address, submitRetryableTxCode, billingConnector.address, msgDataHash],
+        ),
+      )
+      return expectedInboxAccsEntry
+    }
+
+    it('sends a message through the Arbitrum inbox for the L2 Billing to remove tokens', async function () {
+      // "me" sends the tokens from L2 Billing to user2.
+      const tx = billingConnector
+        .connect(me.signer)
+        .removeOnL2(user2.address, oneHundred, defaultMaxGas, defaultGasPriceBid, defaultMaxSubmissionPrice, {
+          value: defaultMsgValue,
+        })
+      const expectedCalldata = billingInterface.encodeFunctionData('removeFromL1', [
+        me.address,
+        user2.address,
+        oneHundred,
+      ])
+      await expect(tx).emit(billingConnector, 'TokensRemovedOnL2').withArgs(me.address, user2.address, oneHundred)
+      // We set the refund address to the destination address, because it's assumed the source address might not exist in L2
+      await expect(tx)
+        .emit(billingConnector, 'TxToL2')
+        .withArgs(user2.address, l2BillingMock.address, 1, expectedCalldata)
+
+      const msgData = createMsgData(user2.address, expectedCalldata)
+      const msgDataHash = keccak256(msgData)
+      const expectedInboxAccsEntry = createInboxAccsEntry(msgDataHash)
+
+      const expectedSeqNum = 1
+      await expect(tx).emit(inboxMock, 'InboxMessageDelivered').withArgs(expectedSeqNum, msgData)
+      await expect(tx)
+        .emit(bridgeMock, 'MessageDelivered')
+        .withArgs(
+          expectedSeqNum,
+          expectedInboxAccsEntry,
+          inboxMock.address,
+          submitRetryableTxCode,
+          billingConnector.address,
+          msgDataHash,
+        )
+    })
+    it('rejects calls with a zero maxSubmissionCost', async function () {
+      // "me" sends the tokens from L2 Billing to user2.
+      const tx = billingConnector
+        .connect(me.signer)
+        .removeOnL2(user2.address, oneHundred, defaultMaxGas, defaultGasPriceBid, toBN(0), {
+          value: defaultMsgValue,
+        })
+      await expect(tx).revertedWith('NO_SUBMISSION_COST')
+    })
+    it('rejects calls with the wrong eth value', async function () {
+      // "me" sends the tokens from L2 Billing to user2.
+      const tx = billingConnector
+        .connect(me.signer)
+        .removeOnL2(user2.address, oneHundred, defaultMaxGas, defaultGasPriceBid, defaultMaxSubmissionPrice, {
+          value: defaultMsgValue.sub(1),
+        })
+      await expect(tx).revertedWith('WRONG_ETH_VALUE')
+    })
+    it('rejects calls to remove zero tokens', async function () {
+      // "me" sends the tokens from L2 Billing to user2.
+      const tx = billingConnector
+        .connect(me.signer)
+        .removeOnL2(user2.address, toBN(0), defaultMaxGas, defaultGasPriceBid, defaultMaxSubmissionPrice, {
+          value: defaultMsgValue,
+        })
+      await expect(tx).revertedWith('Must remove more than 0')
+    })
+    it('rejects calls to remove tokens to the zero address', async function () {
+      // "me" sends the tokens from L2 Billing to user2.
+      const tx = billingConnector
+        .connect(me.signer)
+        .removeOnL2(AddressZero, oneHundred, defaultMaxGas, defaultGasPriceBid, defaultMaxSubmissionPrice, {
+          value: defaultMsgValue,
+        })
+      await expect(tx).revertedWith('destination != 0')
     })
   })
 })

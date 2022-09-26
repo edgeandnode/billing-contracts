@@ -2,11 +2,12 @@ import '@nomicfoundation/hardhat-chai-matchers'
 
 import { expect } from 'chai'
 import { PANIC_CODES } from '@nomicfoundation/hardhat-chai-matchers/panic'
-import { BigNumber, constants, Contract } from 'ethers'
+import { BigNumber, constants, Contract, Signer } from 'ethers'
 import * as deployment from '../utils/deploy'
-import { getAccounts, Account, toGRT, toBN } from '../utils/helpers'
+import { getAccounts, Account, toGRT, toBN, getL2SignerFromL1 } from '../utils/helpers'
 
 import { Billing } from '../build/types/contracts/Billing'
+import { parseUnits } from 'ethers/lib/utils'
 
 const { AddressZero, MaxUint256 } = constants
 
@@ -19,6 +20,9 @@ describe('Billing', () => {
   let user3: Account
   let governor: Account
   let l2TokenGatewayMock: Account
+  let l1BillingConnectorMock: Account
+
+  let l1BillingConnectorMockAlias: Signer
 
   let billing: Billing
 
@@ -26,7 +30,14 @@ describe('Billing', () => {
 
   before(async function () {
     // eslint-disable-next-line @typescript-eslint/no-extra-semi
-    ;[me, collector1, collector2, user1, user2, user3, governor, l2TokenGatewayMock] = await getAccounts()
+    ;[me, collector1, collector2, user1, user2, user3, governor, l2TokenGatewayMock, l1BillingConnectorMock] =
+      await getAccounts()
+    l1BillingConnectorMockAlias = await getL2SignerFromL1(l1BillingConnectorMock.address)
+    // Send funds to the L1 BillingConnector's alias
+    await me.signer.sendTransaction({
+      to: await l1BillingConnectorMockAlias.getAddress(),
+      value: parseUnits('1', 'ether'),
+    })
   })
 
   const tenBillion = toGRT('10000000000')
@@ -88,6 +99,23 @@ describe('Billing', () => {
     it('should fail to set L2 token gateway to the zero address', async function () {
       const tx = billing.connect(governor.signer).setL2TokenGateway(AddressZero)
       await expect(tx).revertedWith('L2 Token Gateway cannot be 0')
+    })
+
+    it('should set the L1 billing connector', async function () {
+      expect(await billing.l1BillingConnector()).eq(AddressZero)
+      const tx = billing.connect(governor.signer).setL1BillingConnector(user3.address)
+      await expect(tx).emit(billing, 'L1BillingConnectorUpdated').withArgs(user3.address)
+      expect(await billing.l1BillingConnector()).eq(user3.address)
+    })
+
+    it('should fail to set L1 billing connector if not governor', async function () {
+      const tx = billing.connect(me.signer).setL1BillingConnector(user3.address)
+      await expect(tx).revertedWith('Only Governor can call')
+    })
+
+    it('should fail to set L1 billing connector to the zero address', async function () {
+      const tx = billing.connect(governor.signer).setL1BillingConnector(AddressZero)
+      await expect(tx).revertedWith('L1 Billing Connector cannot be 0')
     })
   })
 
@@ -237,6 +265,72 @@ describe('Billing', () => {
       await billing.connect(user1.signer).add(oneHundred)
       const tx = billing.connect(user1.signer).remove(user1.address, toBN(0))
       await expect(tx).revertedWith('Must remove more than 0')
+    })
+
+    it('should fail on removing to the zero address', async function () {
+      await billing.connect(user1.signer).add(oneHundred)
+      const tx = billing.connect(user1.signer).remove(AddressZero, oneHundred)
+      await expect(tx).revertedWith('destination != 0')
+    })
+  })
+
+  describe('removeFromL1', function () {
+    context('BillingConnector not set', function () {
+      it('rejects calls if the billing connector was never set', async function () {
+        await billing.connect(user1.signer).add(oneHundred)
+        const tx = billing.connect(l1BillingConnectorMockAlias).removeFromL1(user1.address, user2.address, oneHundred)
+        await expect(tx).revertedWith('BillingConnector not set')
+      })
+    })
+    context('BillingConnector properly set', function () {
+      beforeEach(async function () {
+        await billing.connect(governor.signer).setL1BillingConnector(l1BillingConnectorMock.address)
+      })
+
+      it('should remove using a message from L1', async function () {
+        await billing.connect(user1.signer).add(oneHundred)
+        const beforeRemoveBalance = await billing.userBalances(user1.address)
+        const beforeRemoveTokens = await token.balanceOf(user2.address)
+        const tx = billing.connect(l1BillingConnectorMockAlias).removeFromL1(user1.address, user2.address, oneHundred)
+        await expect(tx).emit(billing, 'TokensRemoved').withArgs(user1.address, user2.address, oneHundred)
+        const afterRemoveBalance = await billing.userBalances(user1.address)
+        const afterRemoveTokens = await token.balanceOf(user2.address)
+        expect(afterRemoveBalance).eq(beforeRemoveBalance.sub(oneHundred))
+        expect(afterRemoveTokens).eq(beforeRemoveTokens.add(oneHundred))
+      })
+
+      it('rejects calls from the unaliased L1 billing connector address', async function () {
+        await billing.connect(user1.signer).add(oneHundred)
+        const tx = billing.connect(l1BillingConnectorMock.signer).removeFromL1(user1.address, user2.address, oneHundred)
+        await expect(tx).revertedWith('Caller must be L1 BillingConnector')
+      })
+
+      it('rejects calls from someone who is not the billing connector', async function () {
+        await billing.connect(user1.signer).add(oneHundred)
+        const tx = billing.connect(user1.signer).removeFromL1(user1.address, user2.address, oneHundred)
+        await expect(tx).revertedWith('Caller must be L1 BillingConnector')
+      })
+      it('should fail on removing too much', async function () {
+        await billing.connect(user1.signer).add(oneHundred)
+        const tx = billing
+          .connect(l1BillingConnectorMockAlias)
+          .removeFromL1(user1.address, user2.address, oneHundred.add(1))
+        await expect(tx).revertedWith('Too much removed')
+      })
+
+      it('should fail on removing zero (even though it should never happen)', async function () {
+        // BillingConnector should never send this message, but we still wanna test the behavior is correct
+        await billing.connect(user1.signer).add(oneHundred)
+        const tx = billing.connect(l1BillingConnectorMockAlias).removeFromL1(user1.address, user2.address, toBN(0))
+        await expect(tx).revertedWith('Must remove more than 0')
+      })
+
+      it('should fail on removing to the zero address (even though it should never happen)', async function () {
+        // BillingConnector should never send this message, but we still wanna test the behavior is correct
+        await billing.connect(user1.signer).add(oneHundred)
+        const tx = billing.connect(l1BillingConnectorMockAlias).removeFromL1(user1.address, AddressZero, oneHundred)
+        await expect(tx).revertedWith('destination != 0')
+      })
     })
   })
 

@@ -88,7 +88,7 @@ contract BillingConnector is IBillingConnector, Governed, Rescuable, L1ArbitrumM
 
     /**
      * @dev Sets the Arbitrum Delayed Inbox address
-     * @param _inbox New address for the L2 Billing contract
+     * @param _inbox New address for the Arbitrum Delayed Inbox
      */
     function setArbitrumInbox(address _inbox) external override onlyGovernor {
         _setArbitrumInbox(_inbox);
@@ -119,6 +119,8 @@ contract BillingConnector is IBillingConnector, Governed, Rescuable, L1ArbitrumM
      * @dev Remove tokens from the billing contract on L2, sending the tokens
      * to an L2 address. Useful when the tokens are in the balance for an address
      * that doesn't exist in L2.
+     * Keep in mind there's no guarantee that the transaction will succeed in L2,
+     * e.g. if the sender doesn't actually have enough balance there.
      * @param _to  L2 address to which the tokens (and any surplus ETH) will be sent
      * @param _amount  Amount of tokens to remove
      * @param _maxGas Max gas for the L2 retryable ticket execution
@@ -137,6 +139,14 @@ contract BillingConnector is IBillingConnector, Governed, Rescuable, L1ArbitrumM
 
         bytes memory l2Calldata = abi.encodeWithSelector(IBilling.removeFromL1.selector, msg.sender, _to, _amount);
 
+        require(_maxSubmissionCost > 0, "NO_SUBMISSION_COST");
+        {
+            // makes sure sufficient ETH is supplied as required for successful redemption on L2
+            // if a user does not desire immediate redemption they should provide
+            // a msg.value of AT LEAST maxSubmissionCost
+            uint256 expectedEth = _maxSubmissionCost + (_maxGas * _gasPriceBid);
+            require(msg.value >= expectedEth, "WRONG_ETH_VALUE");
+        }
         L2GasParams memory gasParams = L2GasParams(_maxSubmissionCost, _maxGas, _gasPriceBid);
 
         sendTxToL2(inbox, l2Billing, _to, msg.value, 0, gasParams, l2Calldata);
@@ -245,9 +255,10 @@ contract BillingConnector is IBillingConnector, Governed, Rescuable, L1ArbitrumM
 
     /**
      * @dev Sets the Arbitrum Delayed Inbox address
-     * @param _inbox New address for the L2 Billing contract
+     * @param _inbox New address for the Arbitrum Delayed Inbox
      */
     function _setArbitrumInbox(address _inbox) internal {
+        require(_inbox != address(0), "Arbitrum Inbox cannot be zero");
         inbox = _inbox;
         emit ArbitrumInboxUpdated(_inbox);
     }

@@ -46,12 +46,12 @@ interface IBilling {
     /**
      * @dev Remove tokens from the billing contract, from L1
      * This can only be called from the BillingConnector on L1.
-     * @param _user  Address from which the tokens are removed
+     * @param _from  Address from which the tokens are removed
      * @param _to Address to send the tokens
      * @param _amount  Amount of tokens to remove
      */
     function removeFromL1(
-        address _user,
+        address _from,
         address _to,
         uint256 _amount
     ) external;
@@ -66,7 +66,8 @@ interface IBilling {
 
     /**
      * @dev Remove tokens from the billing contract
-     * @param _to  Address that tokens are being removed from
+     * Tokens will be removed from the sender's balance
+     * @param _to  Address that tokens are being moved to
      * @param _amount  Amount of tokens to remove
      */
     function remove(address _to, uint256 _amount) external;
