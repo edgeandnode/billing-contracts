@@ -21,15 +21,17 @@ The contract is designed with the following requirements:
 
 ## L1-L2 communication
 
-- The Billing contract is designed to be deployed to an L2 (Arbitrum)
-- A BillingConnector contract can be deployed to L1 (mainnet), and allows users to add funds to the Billing contract using a token gateway that allows callhooks as described in [GIP-0031](https://forum.thegraph.com/t/gip-0031-arbitrum-grt-bridge/3305)
+The Billing contract is designed to be deployed to an L2 (Arbitrum). A BillingConnector contract can be deployed to L1 (mainnet), and allows users to add funds to the Billing contract using a token gateway that allows callhooks as described in [GIP-0031](https://forum.thegraph.com/t/gip-0031-arbitrum-grt-bridge/3305)
 
 To add tokens from L1 to L2, there are two options:
 
-a) if the user's addresses / accounts in L1 and L2 are the same, they can use [BillingConnector.addToL2WithPermit](./contracts/IBillingConnector.sol#L35-L57). They first need to sign a permit for the BillingConnector contract to pull the GRT, and then run the tx including that signature, which will send those GRT to the billing balance for that same address in L2
-b) if the user's addresses / accounts in L1 and L2 are different (e.g. if the L1 address is a multisig that doesn't exist in L2, and they want to use a different address that does exist in L2 as their billing account), then they can use [BillingConnector.addToL2](./contracts/IBillingConnector.sol#L18-L33), but they need to run `GraphToken.approve(billingConnector.address, amount)` beforehand.
+a) If the user's address is an EOA, they can use [BillingConnector.addToL2WithPermit](./contracts/IBillingConnector.sol#L59-L81). They first need to sign a permit for the BillingConnector contract to pull the GRT, and then run the tx including that signature, which will send those GRT to the billing balance for that same address in L2.
+
+b) If the user's address is a contract (e.g. a multisig), or they don't want to sign a permit, then they can use [BillingConnector.addToL2](./contracts/IBillingConnector.sol#L24-L39), but they need to run `GraphToken.approve(billingConnector.address, amount)` beforehand.
 
 To estimate the L2 submission and gas parameters (`_maxGas`, `_gasPriceBid`, and `_maxSubmissionCost`), we recommend using the [Arbitrum SDK](https://github.com/OffchainLabs/arbitrum-sdk). An example for this is available in the [graphprotocol/contracts](https://github.com/graphprotocol/contracts/blob/pcv/l2-bridge/cli/commands/bridge/to-l2.ts#L63-L94) repo - just replace the calldata with the [calldata produced by BillingConnector](./test/billingConnector.test.ts#L277-L284)
+
+To remove tokens on L2, users that have an EOA, or whose account exists in L2 with the same address as L1, can call `Billing.remove` directly on L2 to remove funds to an L2 address. Users whose address doesn't exist in L2 (e.g. when using a multisig), can instead use [BillingConnector.removeOnL2](./contracts/IBillingConnector.sol#L41-L57) to send a message from L1 that will tell the Billing contract to move the tokens to the desired address. There is no validation of the amount actually existing on the L2 balance, and guarantee that the message will arrive before funds are pulled by the Collector, so the message might revert on L2 if the balance is insufficient. Note that this call will also require estimating L2 gas parameters. In this case, the retryable ticket is created directly by the BillingConnector (instead of by the L1GraphTokenGateway), so keep this in mind when estimating gas with the Arbitrum SDK.
 
 ## Testing
 
