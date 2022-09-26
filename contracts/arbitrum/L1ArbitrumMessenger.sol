@@ -19,7 +19,7 @@
  * https://github.com/OffchainLabs/arbitrum/tree/e3a6307ad8a2dc2cad35728a2a9908cfd8dd8ef9/packages/arb-bridge-peripherals
  *
  * MODIFIED from Offchain Labs' implementation:
- * - Changed solidity version to 0.7.6 (pablo@edgeandnode.com)
+ * - Changed solidity version to 0.8.16 (pablo@edgeandnode.com)
  *
  */
 
