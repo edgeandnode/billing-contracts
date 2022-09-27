@@ -9,10 +9,5 @@
     "esModuleInterop": true
   },
   "exclude": ["dist", "node_modules"],
-  "include": [
-    "./hardhat.config.ts",
-    "./scripts/**/*.ts",
-    "./test/**/*.ts",
-    "./build/types"
-  ]
+  "include": ["./hardhat.config.ts", "./scripts/**/*.ts", "./test/**/*.ts", "./build/types"]
 }

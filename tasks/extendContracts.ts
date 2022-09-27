@@ -3,7 +3,7 @@ import { extendEnvironment } from 'hardhat/config'
 import { lazyObject } from 'hardhat/plugins'
 import '@nomiclabs/hardhat-ethers'
 
-import { addresses } from '../utils/addresses'
+import addresses from '../addresses.json'
 import { BillingContracts, loadContracts } from '../utils/contracts'
 
 declare module 'hardhat/types/runtime' {
@@ -13,9 +13,9 @@ declare module 'hardhat/types/runtime' {
 }
 
 extendEnvironment((hre: HardhatRuntimeEnvironment) => {
-  const networkName = hre.network.name
-  const addressBook = addresses[networkName]
+  const chainId = hre.network.config.chainId
+  const addressBook = addresses[chainId as number]
   hre['contracts'] = lazyObject(() => {
-    return loadContracts(addressBook.billing, addressBook.grt, hre.ethers.provider)
+    return loadContracts(addressBook.billing, addressBook.billingConnector, addressBook.grt, hre.ethers.provider)
   })
 })

@@ -41,12 +41,11 @@ interface NetworkConfig {
 const networkConfigs: NetworkConfig[] = [
   { network: 'mainnet', chainId: 1 },
   { network: 'goerli', chainId: 5 },
-  { network: 'polygon', chainId: 137, url: process.env.POLYGON_RPC_URL },
-  { network: 'mumbai', chainId: 80001, url: process.env.POLYGON_RPC_URL },
+  { network: 'arbitrum-one', chainId: 42161, url: 'https://arb1.arbitrum.io/rpc' },
   {
-    network: 'arb-mainnet',
-    chainId: 42161,
-    url: process.env.ARBITRUM_RPC_URL,
+    network: 'arbitrum-goerli',
+    chainId: 421613,
+    url: 'https://goerli-rollup.arbitrum.io/rpc',
   },
 ]
 

@@ -1,11 +1,12 @@
 import { providers, Signer, Contract } from 'ethers'
 import { logger } from './logging'
 import { loadArtifact } from './artifacts'
-import { Billing } from '../build/types/contracts/Billing'
+import { Billing, BillingConnector } from '../build/types'
 
 export interface BillingContracts {
-  Billing: Billing
-  Token: Contract
+  Billing?: Billing
+  BillingConnector?: BillingConnector
+  Token?: Contract
 }
 
 export const getContractAt = (
@@ -17,19 +18,33 @@ export const getContractAt = (
 }
 
 export const loadContracts = (
-  billingAddress: string,
-  tokenAddress: string,
+  billingAddress: string | undefined,
+  billingConnectorAddress: string | undefined,
+  tokenAddress: string | undefined,
   signerOrProvider?: Signer | providers.Provider,
 ): BillingContracts => {
   const contracts = {}
   try {
-    const billing = getContractAt('Billing', billingAddress)
-    const token = getContractAt('Token', tokenAddress)
-    contracts['Billing'] = billing
-    contracts['Token'] = token
-    if (signerOrProvider) {
-      contracts['Billing'] = contracts['Billing'].connect(signerOrProvider)
-      contracts['Token'] = contracts['Token'].connect(signerOrProvider)
+    if (billingAddress) {
+      const billing = getContractAt('Billing', billingAddress)
+      contracts['Billing'] = billing
+      if (signerOrProvider) {
+        contracts['Billing'] = contracts['Billing'].connect(signerOrProvider)
+      }
+    }
+    if (billingConnectorAddress) {
+      const billingConnector = getContractAt('BillingConnector', billingConnectorAddress)
+      contracts['BillingConnector'] = billingConnector
+      if (signerOrProvider) {
+        contracts['BillingConnector'] = contracts['BillingConnector'].connect(signerOrProvider)
+      }
+    }
+    if (tokenAddress) {
+      const token = getContractAt('Token', tokenAddress)
+      contracts['Token'] = token
+      if (signerOrProvider) {
+        contracts['Token'] = contracts['Token'].connect(signerOrProvider)
+      }
     }
   } catch (err) {
     logger.warn(`Could not load contracts`)

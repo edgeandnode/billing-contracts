@@ -60,10 +60,10 @@ await billing.add('1000000000000000000')
 
 To deploy, see these instructions:
 
-Use arb-mainnet to deploy Billing:
+Use arbitrum-one (or arbitrum-goerli) to deploy Billing:
 
 ```
-hh deploy-billing --network arb-mainnet \
+hh deploy-billing --network arbitrum-one \
     --collector <COLLECTOR_ADDRESS> \
     --token <GRT_ADDRESS> \
     --governor <GOVERNOR_ADDRESS> \
@@ -73,7 +73,7 @@ hh deploy-billing --network arb-mainnet \
 Then run this to verify on Etherscan:
 
 ```
-hh verify --network arb-mainnet \
+hh verify --network arbitrum-one \
     <NEW_DEPLOYED_ADDRESS> \
     <COLLECTOR_ADDRESS> \
     <GRT_ADDRESS> \
@@ -82,7 +82,7 @@ hh verify --network arb-mainnet \
 ```
 
 
-Use mainnet to deploy BillingConnector:
+Use mainnet (or goerli) to deploy BillingConnector:
 
 ```
 hh deploy-billing-connector --network mainnet \
