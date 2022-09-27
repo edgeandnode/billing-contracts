@@ -571,7 +571,7 @@ describe('BillingConnector', () => {
         user2.address,
         oneHundred,
       ])
-      await expect(tx).emit(billingConnector, 'TokensRemovedOnL2').withArgs(me.address, user2.address, oneHundred)
+      await expect(tx).emit(billingConnector, 'RemovalRequestSentToL2').withArgs(me.address, user2.address, oneHundred)
       // We set the refund address to the destination address, because it's assumed the source address might not exist in L2
       await expect(tx)
         .emit(billingConnector, 'TxToL2')

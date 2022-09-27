@@ -47,7 +47,7 @@ contract BillingConnector is IBillingConnector, Governed, Rescuable, L1ArbitrumM
     /**
      * @dev Request sent to the Billing contract on L2 to remove tokens from the balance
      */
-    event TokensRemovedOnL2(address indexed _from, address indexed _to, uint256 _amount);
+    event RemovalRequestSentToL2(address indexed _from, address indexed _to, uint256 _amount);
 
     /**
      * @dev Constructor function
@@ -150,7 +150,7 @@ contract BillingConnector is IBillingConnector, Governed, Rescuable, L1ArbitrumM
         L2GasParams memory gasParams = L2GasParams(_maxSubmissionCost, _maxGas, _gasPriceBid);
 
         sendTxToL2(inbox, l2Billing, _to, msg.value, 0, gasParams, l2Calldata);
-        emit TokensRemovedOnL2(msg.sender, _to, _amount);
+        emit RemovalRequestSentToL2(msg.sender, _to, _amount);
     }
 
     /**
