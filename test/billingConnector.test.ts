@@ -211,7 +211,7 @@ describe('BillingConnector', () => {
         .addToL2(user2.address, oneHundred, defaultMaxGas, defaultGasPriceBid, defaultMaxSubmissionPrice, {
           value: defaultMsgValue,
         })
-      const expectedCallhookData = billingInterface.encodeFunctionData('addFromL1', [user2.address, oneHundred])
+      const expectedCallhookData = defaultAbiCoder.encode(['address'], [user2.address])
       const expectedOutboundCalldata = l1TokenGatewayMock.interface.encodeFunctionData('finalizeInboundTransfer', [
         token.address,
         billingConnector.address,
@@ -311,7 +311,7 @@ describe('BillingConnector', () => {
             value: defaultMsgValue,
           },
         )
-      const expectedCallhookData = billingInterface.encodeFunctionData('addFromL1', [me.address, oneHundred])
+      const expectedCallhookData = defaultAbiCoder.encode(['address'], [me.address])
       const expectedOutboundCalldata = l1TokenGatewayMock.interface.encodeFunctionData('finalizeInboundTransfer', [
         token.address,
         billingConnector.address,

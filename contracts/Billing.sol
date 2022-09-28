@@ -157,13 +157,21 @@ contract Billing is IBilling, Governed, Rescuable {
     }
 
     /**
-     * @dev Add tokens into the billing contract for any user, from L1
-     * This can only be called from L2GraphTokenGateway.finalizeInboundTransfer.
-     * @param _user  Address that tokens are being added to
-     * @param _amount  Amount of tokens to add
+     * @dev Receive tokens with a callhook from the Arbitrum GRT bridge
+     * Expects an `address user` in the encoded _data.
+     * @param _from Token sender in L1
+     * @param _amount Amount of tokens that were transferred
+     * @param _data ABI-encoded callhook data: contains address that tokens are being added to
      */
-    function addFromL1(address _user, uint256 _amount) external override onlyL2TokenGateway {
-        _add(_user, _amount);
+    function onTokenTransfer(
+        address _from,
+        uint256 _amount,
+        bytes calldata _data
+    ) external override onlyL2TokenGateway {
+        require(l1BillingConnector != address(0), "BillingConnector not set");
+        require(_from == l1BillingConnector, "Invalid L1 sender!");
+        address user = abi.decode(_data, (address));
+        _add(user, _amount);
     }
 
     /**

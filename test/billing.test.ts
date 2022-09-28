@@ -7,7 +7,7 @@ import * as deployment from '../utils/deploy'
 import { getAccounts, Account, toGRT, toBN, getL2SignerFromL1 } from '../utils/helpers'
 
 import { Billing } from '../build/types/contracts/Billing'
-import { parseUnits } from 'ethers/lib/utils'
+import { defaultAbiCoder, parseUnits } from 'ethers/lib/utils'
 
 const { AddressZero, MaxUint256 } = constants
 
@@ -164,31 +164,63 @@ describe('Billing', () => {
     })
   })
 
-  describe('addFromL1', function () {
-    it('should add to (without moving tokens)', async function () {
-      const beforeUserBalance = await billing.userBalances(user2.address)
-      const beforeContractBalance = await token.balanceOf(billing.address)
-
-      const tx = billing.connect(l2TokenGatewayMock.signer).addFromL1(user2.address, oneHundred)
-      await expect(tx).emit(billing, 'TokensAdded').withArgs(user2.address, oneHundred)
-
-      const afterUserBalance = await billing.userBalances(user2.address)
-      const afterContractBalance = await token.balanceOf(billing.address)
-      expect(beforeContractBalance).eq(afterContractBalance) // No tokens moved
-      expect(afterUserBalance).eq(beforeUserBalance.add(oneHundred)) // But balance increased
+  describe('onTokenTransfer', function () {
+    context('BillingConnector not set', function () {
+      it('should fail if called by the token gateway but the billing connector is not set', async function () {
+        const callhookData = defaultAbiCoder.encode(['address'], [user2.address])
+        const tx = billing
+          .connect(l2TokenGatewayMock.signer)
+          .onTokenTransfer(l1BillingConnectorMock.address, oneHundred, callhookData)
+        await expect(tx).revertedWith('BillingConnector not set')
+      })
     })
+    context('BillingConnector properly set', function () {
+      beforeEach(async function () {
+        await billing.connect(governor.signer).setL1BillingConnector(l1BillingConnectorMock.address)
+      })
 
-    it('should fail add if not called by the token gateway', async function () {
-      const tx = billing.connect(user1.signer).addFromL1(user2.address, oneHundred)
-      await expect(tx).revertedWith('Caller must be L2 token gateway')
-    })
+      it('should add to (without moving tokens)', async function () {
+        const beforeUserBalance = await billing.userBalances(user2.address)
+        const beforeContractBalance = await token.balanceOf(billing.address)
 
-    it('should fail on overflow using built-in Solidity 0.8 safe math', async function () {
-      const tx = billing.connect(l2TokenGatewayMock.signer).addFromL1(user2.address, MaxUint256)
-      await expect(tx).emit(billing, 'TokensAdded').withArgs(user2.address, MaxUint256)
+        const callhookData = defaultAbiCoder.encode(['address'], [user2.address])
+        const tx = billing
+          .connect(l2TokenGatewayMock.signer)
+          .onTokenTransfer(l1BillingConnectorMock.address, oneHundred, callhookData)
+        await expect(tx).emit(billing, 'TokensAdded').withArgs(user2.address, oneHundred)
 
-      const tx2 = billing.connect(l2TokenGatewayMock.signer).addFromL1(user2.address, oneHundred)
-      await expect(tx2).revertedWithPanic(PANIC_CODES.ARITHMETIC_UNDER_OR_OVERFLOW)
+        const afterUserBalance = await billing.userBalances(user2.address)
+        const afterContractBalance = await token.balanceOf(billing.address)
+        expect(beforeContractBalance).eq(afterContractBalance) // No tokens moved
+        expect(afterUserBalance).eq(beforeUserBalance.add(oneHundred)) // But balance increased
+      })
+
+      it('should fail add if not called by the token gateway', async function () {
+        const callhookData = defaultAbiCoder.encode(['address'], [user2.address])
+        const tx = billing
+          .connect(user1.signer)
+          .onTokenTransfer(l1BillingConnectorMock.address, oneHundred, callhookData)
+        await expect(tx).revertedWith('Caller must be L2 token gateway')
+      })
+
+      it('should fail if called by the token gateway but the L1 sender is not the billing connector', async function () {
+        const callhookData = defaultAbiCoder.encode(['address'], [user2.address])
+        const tx = billing.connect(l2TokenGatewayMock.signer).onTokenTransfer(user1.address, oneHundred, callhookData)
+        await expect(tx).revertedWith('Invalid L1 sender!')
+      })
+
+      it('should fail on overflow using built-in Solidity 0.8 safe math', async function () {
+        const callhookData = defaultAbiCoder.encode(['address'], [user2.address])
+        const tx = billing
+          .connect(l2TokenGatewayMock.signer)
+          .onTokenTransfer(l1BillingConnectorMock.address, MaxUint256, callhookData)
+        await expect(tx).emit(billing, 'TokensAdded').withArgs(user2.address, MaxUint256)
+
+        const tx2 = billing
+          .connect(l2TokenGatewayMock.signer)
+          .onTokenTransfer(l1BillingConnectorMock.address, oneHundred, callhookData)
+        await expect(tx2).revertedWithPanic(PANIC_CODES.ARITHMETIC_UNDER_OR_OVERFLOW)
+      })
     })
   })
 

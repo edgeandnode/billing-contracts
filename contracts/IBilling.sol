@@ -36,12 +36,17 @@ interface IBilling {
     function addTo(address _to, uint256 _amount) external;
 
     /**
-     * @dev Add tokens into the billing contract for any user, from L1
-     * This can only be called from L2GraphTokenGateway.finalizeInboundTransfer.
-     * @param _user  Address that tokens are being added to
-     * @param _amount  Amount of tokens to add
+     * @dev Receive tokens with a callhook from the Arbitrum GRT bridge
+     * Expects an `address user` in the encoded _data.
+     * @param _from Token sender in L1
+     * @param _amount Amount of tokens that were transferred
+     * @param _data ABI-encoded callhook data: contains address that tokens are being added to
      */
-    function addFromL1(address _user, uint256 _amount) external;
+    function onTokenTransfer(
+        address _from,
+        uint256 _amount,
+        bytes calldata _data
+    ) external;
 
     /**
      * @dev Remove tokens from the billing contract, from L1
