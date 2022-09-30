@@ -11,6 +11,7 @@ import { logger } from '../../utils/logging'
 import addresses from '../../addresses.json'
 import { getContractAt } from '../../utils/contracts'
 import { Billing } from '../../build/types'
+import { promises as fs } from 'fs'
 
 task('deploy-billing', 'Deploy the billing contract (use L2 network!)')
   .addParam('collector', 'Address of the collector')
@@ -19,10 +20,13 @@ task('deploy-billing', 'Deploy the billing contract (use L2 network!)')
   .addParam('tokenGateway', 'Address of the L2GraphTokenGateway')
   .setAction(async (taskArgs, hre: HardhatRuntimeEnvironment) => {
     const accounts = await hre.ethers.getSigners()
-    await deployBilling(
+    const chainId = (hre.network.config.chainId as number).toString()
+    const billing = await deployBilling(
       [taskArgs.collector, taskArgs.token, taskArgs.governor ?? accounts[0].address, taskArgs.tokenGateway],
       accounts[0] as unknown as Wallet,
     )
+    addresses[chainId]['Billing'] = billing.address
+    return fs.writeFile('addresses.json', JSON.stringify(addresses, null, 2))
   })
 
 task(
@@ -33,12 +37,12 @@ task(
   .addParam('billingConnector', 'Address of the BillingConnector on L1')
   .setAction(async (taskArgs, hre: HardhatRuntimeEnvironment) => {
     const accounts = await hre.ethers.getSigners()
-    const chainId = hre.network.config.chainId
-    const addressBook = addresses[chainId as number]
+    const chainId = (hre.network.config.chainId as number).toString()
+    const addressBook = addresses[chainId]
     const wallet = accounts[0] as unknown as Wallet
     const billing = getContractAt('Billing', addressBook[chainId]['Billing'], wallet) as unknown as Billing
 
-    logger.log(`Setting billing connector address to ${taskArgs.billingConnector}`)
+    logger.log(`Setting L1 billing connector address to ${taskArgs.billingConnector}`)
     const tx1 = await billing.connect(wallet).setL1BillingConnector(taskArgs.billingConnector)
     const receipt1 = await tx1.wait()
     logger.log(`> Done. Tx hash: ${receipt1.transactionHash}`)
