@@ -3,8 +3,18 @@
     "ArbitrumInbox": "0x4Dbd4fc535Ac27206064B68FfCf827b0A60BAB3f"
   },
   "5": {
-    "ArbitrumInbox": "0x6BEbC4925716945D46F0Ec336D5C2564F419682C"
+    "ArbitrumInbox": "0x6BEbC4925716945D46F0Ec336D5C2564F419682C",
+    "GraphToken": "0xf39b7dE1addC3FE1976DAbc7Fd9105955f1Bf15e",
+    "L1GraphTokenGateway": "0x6E11a368e33B82016a0d76fdCf96EC8FA7794e51",
+    "governor": "0xc6B8Dd6163a0d6E3Ff37Eb4306DeD0069FE4bF59",
+    "BillingConnector": "0xB8c0F2BcA4d3B81c39962d0BeD80A57ECf6c6C55"
   },
   "42161": {},
-  "421613": {}
+  "421613": {
+    "L2GraphToken": "0x4774Bef7c0627Be77edC73C9454B8CfA16142e69",
+    "L2GraphTokenGateway": "0xda65a7FC2A518Cd04aC7f5Da26E23f9F11b66EDE",
+    "collector": "0x52e498ae9b8a5ee2a5cd26805f06a9f29a7f489f",
+    "governor": "0xc6B8Dd6163a0d6E3Ff37Eb4306DeD0069FE4bF59",
+    "Billing": "0x10CEF86258b3327fA43B4e9bDEB4c7f4f05ad5E6"
+  }
 }
