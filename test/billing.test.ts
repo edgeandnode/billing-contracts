@@ -497,9 +497,9 @@ describe('Billing', () => {
       const tokenBeforeBilling = await token.balanceOf(billing.address)
       const token2BeforeBilling = await token2.balanceOf(billing.address)
 
-      const tx = await billing.connect(collector1.signer).rescueTokens(user1.address, token.address, oneMillion)
+      const tx = await billing.connect(governor.signer).rescueTokens(user1.address, token.address, oneMillion)
       await expect(tx).emit(billing, 'TokensRescued').withArgs(user1.address, token.address, oneMillion)
-      await billing.connect(collector1.signer).rescueTokens(user1.address, token2.address, oneMillion)
+      await billing.connect(governor.signer).rescueTokens(user1.address, token2.address, oneMillion)
 
       const tokenAfterUser = await token.balanceOf(user1.address)
       const token2AfterUser = await token2.balanceOf(user1.address)
@@ -512,24 +512,24 @@ describe('Billing', () => {
       expect(token2AfterBilling).eq(token2BeforeBilling.sub(oneMillion))
     })
 
-    it('should fail rescue tokens when not collector', async function () {
+    it('should fail rescue tokens when not the governor', async function () {
       // the bad transfer of GRT
       await token.connect(user1.signer).transfer(billing.address, oneMillion)
       const tx = billing.connect(user1.signer).rescueTokens(user1.address, token.address, oneMillion)
-      await expect(tx).revertedWith('Caller must be Collector')
+      await expect(tx).revertedWith('Only Governor can call')
     })
 
     it('should fail when trying to send to address zero', async function () {
       // the bad transfer of GRT
       await token.connect(user1.signer).transfer(billing.address, oneMillion)
-      const tx = billing.connect(collector1.signer).rescueTokens(AddressZero, token.address, oneMillion)
+      const tx = billing.connect(governor.signer).rescueTokens(AddressZero, token.address, oneMillion)
       await expect(tx).revertedWith('Cannot send to address(0)')
     })
 
     it('should fail when trying to send zero tokens', async function () {
       // the bad transfer of GRT
       await token.connect(user1.signer).transfer(billing.address, oneMillion)
-      const tx = billing.connect(collector1.signer).rescueTokens(user1.address, token.address, toBN(0))
+      const tx = billing.connect(governor.signer).rescueTokens(user1.address, token.address, toBN(0))
       await expect(tx).revertedWith('Cannot rescue 0 tokens')
     })
   })

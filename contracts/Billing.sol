@@ -327,7 +327,7 @@ contract Billing is IBilling, Governed, Rescuable {
     }
 
     /**
-     * @dev Allows a Collector to rescue any ERC20 tokens sent to this contract by accident
+     * @dev Allows the Governor to rescue any ERC20 tokens sent to this contract by accident
      * @param _to  Destination address to send the tokens
      * @param _token  Token address of the token that was accidentally sent to the contract
      * @param _amount  Amount of tokens to pull
@@ -336,7 +336,7 @@ contract Billing is IBilling, Governed, Rescuable {
         address _to,
         address _token,
         uint256 _amount
-    ) external onlyCollector {
+    ) external onlyGovernor {
         _rescueTokens(_to, _token, _amount);
     }
 
