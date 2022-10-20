@@ -70,9 +70,9 @@ contract Billing is IBilling, Governed, Rescuable {
     event L1BillingConnectorUpdated(address l1BillingConnector);
 
     /**
-     * @dev Constructor function
-     * Note that the l1BillingConnector address must be provided
-     * afterwards through setL1BillingConnectr, since it's expected
+     * @notice Constructor function for the Billing contract
+     * @dev Note that the l1BillingConnector address must be provided
+     * afterwards through setL1BillingConnector, since it's expected
      * to be deployed after this one.
      * @param _collector   Initial collector address
      * @param _token     Graph Token address
@@ -118,7 +118,7 @@ contract Billing is IBilling, Governed, Rescuable {
     }
 
     /**
-     * @dev Set or unset an address as an allowed Collector
+     * @notice Set or unset an address as an allowed Collector
      * @param _collector  Collector address
      * @param _enabled True to set the _collector address as a Collector, false to remove it
      */
@@ -127,7 +127,7 @@ contract Billing is IBilling, Governed, Rescuable {
     }
 
     /**
-     * @dev Sets the L2 token gateway address
+     * @notice Sets the L2 token gateway address
      * @param _l2TokenGateway New address for the L2 token gateway
      */
     function setL2TokenGateway(address _l2TokenGateway) external override onlyGovernor {
@@ -135,7 +135,7 @@ contract Billing is IBilling, Governed, Rescuable {
     }
 
     /**
-     * @dev Sets the L1 Billing Connector address
+     * @notice Sets the L1 Billing Connector address
      * @param _l1BillingConnector New address for the L1 BillingConnector (without any aliasing!)
      */
     function setL1BillingConnector(address _l1BillingConnector) external override onlyGovernor {
@@ -145,8 +145,8 @@ contract Billing is IBilling, Governed, Rescuable {
     }
 
     /**
-     * @dev Add tokens into the billing contract
-     * Ensure graphToken.approve() is called on the billing contract first
+     * @notice Add tokens into the billing contract
+     * @dev Ensure graphToken.approve() is called on the billing contract first
      * @param _amount  Amount of tokens to add
      */
     function add(uint256 _amount) external override {
@@ -154,8 +154,8 @@ contract Billing is IBilling, Governed, Rescuable {
     }
 
     /**
-     * @dev Add tokens into the billing contract for any user
-     * Ensure graphToken.approve() is called on the billing contract first
+     * @notice Add tokens into the billing contract for any user
+     * @dev Ensure graphToken.approve() is called on the billing contract first
      * @param _to  Address that tokens are being added to
      * @param _amount  Amount of tokens to add
      */
@@ -164,8 +164,8 @@ contract Billing is IBilling, Governed, Rescuable {
     }
 
     /**
-     * @dev Receive tokens with a callhook from the Arbitrum GRT bridge
-     * Expects an `address user` in the encoded _data.
+     * @notice Receive tokens with a callhook from the Arbitrum GRT bridge
+     * @dev Expects an `address user` in the encoded _data.
      * @param _from Token sender in L1
      * @param _amount Amount of tokens that were transferred
      * @param _data ABI-encoded callhook data: contains address that tokens are being added to
@@ -182,8 +182,8 @@ contract Billing is IBilling, Governed, Rescuable {
     }
 
     /**
-     * @dev Remove tokens from the billing contract, from L1
-     * This can only be called from the BillingConnector on L1.
+     * @notice Remove tokens from the billing contract, from L1
+     * @dev This can only be called from the BillingConnector on L1.
      * If the user does not have enough balance, rather than reverting,
      * this function will succeed and emit InsufficientBalanceForRemoval.
      * @param _from  Address from which the tokens are removed
@@ -207,8 +207,8 @@ contract Billing is IBilling, Governed, Rescuable {
     }
 
     /**
-     * @dev Add tokens into the billing contract in bulk
-     * Ensure graphToken.approve() is called on the billing contract first
+     * @notice Add tokens into the billing contract in bulk
+     * @dev Ensure graphToken.approve() is called on the billing contract first
      * @param _to  Array of addresses where to add tokens
      * @param _amount  Array of amount of tokens to add to each account
      */
@@ -233,37 +233,8 @@ contract Billing is IBilling, Governed, Rescuable {
     }
 
     /**
-     * @dev Pull, then add tokens into the billing contract
-     * Ensure graphToken.approve() is called on the billing contract first
-     * @param _from  Address that is sending tokens
-     * @param _user  User that is adding tokens
-     * @param _amount  Amount of tokens to add
-     */
-    function _pullAndAdd(
-        address _from,
-        address _user,
-        uint256 _amount
-    ) private {
-        require(_amount != 0, "Must add more than 0");
-        require(_user != address(0), "user != 0");
-        graphToken.transferFrom(_from, address(this), _amount);
-        _add(_user, _amount);
-    }
-
-    /**
-     * @dev Add tokens into the billing account balance for a user
-     * Tokens must already be in this contract's balance
-     * @param _user  User that is adding tokens
-     * @param _amount  Amount of tokens to add
-     */
-    function _add(address _user, uint256 _amount) private {
-        userBalances[_user] = userBalances[_user] + _amount;
-        emit TokensAdded(_user, _amount);
-    }
-
-    /**
-     * @dev Remove tokens from the billing contract
-     * Tokens will be removed from the sender's balance
+     * @notice Remove tokens from the billing contract
+     * @dev Tokens will be removed from the sender's balance
      * @param _to  Address that tokens will be sent to
      * @param _amount  Amount of tokens to remove
      */
@@ -277,7 +248,7 @@ contract Billing is IBilling, Governed, Rescuable {
     }
 
     /**
-     * @dev Collector pulls tokens from the billing contract
+     * @notice Collector pulls tokens from the billing contract
      * @param _user  Address that tokens are being pulled from
      * @param _amount  Amount of tokens to pull
      * @param _to Destination to send pulled tokens
@@ -292,7 +263,7 @@ contract Billing is IBilling, Governed, Rescuable {
     }
 
     /**
-     * @dev Collector pulls tokens from many users in the billing contract
+     * @notice Collector pulls tokens from many users in the billing contract
      * @param _users  Addresses that tokens are being pulled from
      * @param _amounts  Amounts of tokens to pull from each user
      * @param _to Destination to send pulled tokens
@@ -312,6 +283,20 @@ contract Billing is IBilling, Governed, Rescuable {
     }
 
     /**
+     * @notice Allows the Governor to rescue any ERC20 tokens sent to this contract by accident
+     * @param _to  Destination address to send the tokens
+     * @param _token  Token address of the token that was accidentally sent to the contract
+     * @param _amount  Amount of tokens to pull
+     */
+    function rescueTokens(
+        address _to,
+        address _token,
+        uint256 _amount
+    ) external onlyGovernor {
+        _rescueTokens(_to, _token, _amount);
+    }
+
+    /**
      * @dev Collector pulls tokens from the billing contract. Uses Math.min() so that it won't fail
      * in the event that a user removes in front of the Collector pulling
      * @param _user  Address that tokens are being pulled from
@@ -324,20 +309,6 @@ contract Billing is IBilling, Governed, Rescuable {
             emit TokensPulled(_user, maxAmount);
         }
         return maxAmount;
-    }
-
-    /**
-     * @dev Allows the Governor to rescue any ERC20 tokens sent to this contract by accident
-     * @param _to  Destination address to send the tokens
-     * @param _token  Token address of the token that was accidentally sent to the contract
-     * @param _amount  Amount of tokens to pull
-     */
-    function rescueTokens(
-        address _to,
-        address _token,
-        uint256 _amount
-    ) external onlyGovernor {
-        _rescueTokens(_to, _token, _amount);
     }
 
     /**
@@ -371,5 +342,34 @@ contract Billing is IBilling, Governed, Rescuable {
         require(_l2TokenGateway != address(0), "L2 Token Gateway cannot be 0");
         l2TokenGateway = _l2TokenGateway;
         emit L2TokenGatewayUpdated(_l2TokenGateway);
+    }
+
+    /**
+     * @dev Pull, then add tokens into the billing contract
+     * Ensure graphToken.approve() is called on the billing contract first
+     * @param _from  Address that is sending tokens
+     * @param _user  User that is adding tokens
+     * @param _amount  Amount of tokens to add
+     */
+    function _pullAndAdd(
+        address _from,
+        address _user,
+        uint256 _amount
+    ) private {
+        require(_amount != 0, "Must add more than 0");
+        require(_user != address(0), "user != 0");
+        graphToken.transferFrom(_from, address(this), _amount);
+        _add(_user, _amount);
+    }
+
+    /**
+     * @dev Add tokens into the billing account balance for a user
+     * Tokens must already be in this contract's balance
+     * @param _user  User that is adding tokens
+     * @param _amount  Amount of tokens to add
+     */
+    function _add(address _user, uint256 _amount) private {
+        userBalances[_user] = userBalances[_user] + _amount;
+        emit TokensAdded(_user, _amount);
     }
 }

@@ -50,7 +50,7 @@ contract BillingConnector is IBillingConnector, Governed, Rescuable, L1ArbitrumM
     event RemovalRequestSentToL2(address indexed _from, address indexed _to, uint256 _amount);
 
     /**
-     * @dev Constructor function
+     * @notice Constructor function for BillingConnector
      * @param _l1TokenGateway   L1GraphTokenGateway address
      * @param _l2Billing Address of the Billing contract on L2
      * @param _token     Graph Token address
@@ -71,7 +71,7 @@ contract BillingConnector is IBillingConnector, Governed, Rescuable, L1ArbitrumM
     }
 
     /**
-     * @dev Sets the L1 token gateway address
+     * @notice Sets the L1 token gateway address
      * @param _l1TokenGateway New address for the L1 token gateway
      */
     function setL1TokenGateway(address _l1TokenGateway) external override onlyGovernor {
@@ -79,7 +79,7 @@ contract BillingConnector is IBillingConnector, Governed, Rescuable, L1ArbitrumM
     }
 
     /**
-     * @dev Sets the L2 Billing address
+     * @notice Sets the L2 Billing address
      * @param _l2Billing New address for the L2 Billing contract
      */
     function setL2Billing(address _l2Billing) external override onlyGovernor {
@@ -87,7 +87,7 @@ contract BillingConnector is IBillingConnector, Governed, Rescuable, L1ArbitrumM
     }
 
     /**
-     * @dev Sets the Arbitrum Delayed Inbox address
+     * @notice Sets the Arbitrum Delayed Inbox address
      * @param _inbox New address for the Arbitrum Delayed Inbox
      */
     function setArbitrumInbox(address _inbox) external override onlyGovernor {
@@ -95,8 +95,8 @@ contract BillingConnector is IBillingConnector, Governed, Rescuable, L1ArbitrumM
     }
 
     /**
-     * @dev Add tokens into the billing contract on L2, for any user
-     * Ensure graphToken.approve() is called for the BillingConnector contract first
+     * @notice Add tokens into the billing contract on L2, for any user
+     * @dev Ensure graphToken.approve() is called for the BillingConnector contract first
      * @param _to  Address that tokens are being added to
      * @param _amount  Amount of tokens to add
      * @param _maxGas Max gas for the L2 retryable ticket execution
@@ -116,8 +116,9 @@ contract BillingConnector is IBillingConnector, Governed, Rescuable, L1ArbitrumM
     }
 
     /**
-     * @dev Remove tokens from the billing contract on L2, sending the tokens
-     * to an L2 address. Useful when the tokens are in the balance for an address
+     * @notice Remove tokens from the billing contract on L2, sending the tokens
+     * to an L2 address
+     * @dev Useful when the tokens are in the balance for an address
      * that doesn't exist in L2.
      * Keep in mind there's no guarantee that the transaction will succeed in L2,
      * e.g. if the sender doesn't actually have enough balance there.
@@ -153,7 +154,7 @@ contract BillingConnector is IBillingConnector, Governed, Rescuable, L1ArbitrumM
     }
 
     /**
-     * @dev Add tokens into the billing contract on L2, for any user, using a signed permit
+     * @notice Add tokens into the billing contract on L2, for any user, using a signed permit
      * @param _user Address of the current owner of the tokens, that will also be the destination in L2
      * @param _amount  Amount of tokens to add
      * @param _maxGas Max gas for the L2 retryable ticket execution
@@ -182,7 +183,7 @@ contract BillingConnector is IBillingConnector, Governed, Rescuable, L1ArbitrumM
     }
 
     /**
-     * @dev Allows the Governor to rescue any ERC20 tokens sent to this contract by accident
+     * @notice Allows the Governor to rescue any ERC20 tokens sent to this contract by accident
      * @param _to  Destination address to send the tokens
      * @param _token  Token address of the token that was accidentally sent to the contract
      * @param _amount  Amount of tokens to pull
