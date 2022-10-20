@@ -136,6 +136,10 @@ contract BillingConnector is IBillingConnector, Governed, Rescuable, L1ArbitrumM
     ) external payable override {
         require(_amount != 0, "Must remove more than 0");
         require(_to != address(0), "destination != 0");
+        // Callers of this function should generally be L1 contracts
+        // (e.g. multisigs) that don't exist in L2, so the destination
+        // must be some other address.
+        require(_to != msg.sender, "destination != sender");
 
         bytes memory l2Calldata = abi.encodeWithSelector(IBilling.removeFromL1.selector, msg.sender, _to, _amount);
 

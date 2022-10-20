@@ -630,5 +630,14 @@ describe('BillingConnector', () => {
         })
       await expect(tx).revertedWith('destination != 0')
     })
+    it('rejects calls to remove tokens to the sender address', async function () {
+      // "me" sends the tokens from L2 Billing to user2.
+      const tx = billingConnector
+        .connect(me.signer)
+        .removeOnL2(me.address, oneHundred, defaultMaxGas, defaultGasPriceBid, defaultMaxSubmissionPrice, {
+          value: defaultMsgValue,
+        })
+      await expect(tx).revertedWith('destination != sender')
+    })
   })
 })
