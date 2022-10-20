@@ -342,12 +342,15 @@ describe('Billing', () => {
         const tx = billing.connect(user1.signer).removeFromL1(user1.address, user2.address, oneHundred)
         await expect(tx).revertedWith('Caller must be L1 BillingConnector')
       })
-      it('should fail on removing too much', async function () {
+
+      it('should emit an event when trying to remove too much', async function () {
         await billing.connect(user1.signer).add(oneHundred)
         const tx = billing
           .connect(l1BillingConnectorMockAlias)
           .removeFromL1(user1.address, user2.address, oneHundred.add(1))
-        await expect(tx).revertedWith('Too much removed')
+        await expect(tx)
+          .emit(billing, 'InsufficientBalanceForRemoval')
+          .withArgs(user1.address, user2.address, oneHundred.add(1))
       })
 
       it('should fail on removing zero (even though it should never happen)', async function () {

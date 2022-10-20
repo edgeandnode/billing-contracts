@@ -37,10 +37,17 @@ contract Billing is IBilling, Governed, Rescuable {
      * @dev User adds tokens
      */
     event TokensAdded(address indexed user, uint256 amount);
+
     /**
      * @dev User removes tokens
      */
     event TokensRemoved(address indexed from, address indexed to, uint256 amount);
+
+    /**
+     * @dev User tried to remove tokens from L1,
+     * but they did not have enough balance
+     */
+    event InsufficientBalanceForRemoval(address indexed from, address indexed to, uint256 amount);
 
     /**
      * @dev Gateway pulled tokens from a user
@@ -177,6 +184,8 @@ contract Billing is IBilling, Governed, Rescuable {
     /**
      * @dev Remove tokens from the billing contract, from L1
      * This can only be called from the BillingConnector on L1.
+     * If the user does not have enough balance, rather than reverting,
+     * this function will succeed and emit InsufficientBalanceForRemoval.
      * @param _from  Address from which the tokens are removed
      * @param _to Address to send the tokens
      * @param _amount  Amount of tokens to remove
@@ -186,7 +195,15 @@ contract Billing is IBilling, Governed, Rescuable {
         address _to,
         uint256 _amount
     ) external override onlyL1BillingConnector {
-        _remove(_from, _to, _amount);
+        require(_to != address(0), "destination != 0");
+        require(_amount != 0, "Must remove more than 0");
+        if (userBalances[_from] >= _amount) {
+            userBalances[_from] = userBalances[_from] - _amount;
+            graphToken.transfer(_to, _amount);
+            emit TokensRemoved(_from, _to, _amount);
+        } else {
+            emit InsufficientBalanceForRemoval(_from, _to, _amount);
+        }
     }
 
     /**
@@ -251,7 +268,12 @@ contract Billing is IBilling, Governed, Rescuable {
      * @param _amount  Amount of tokens to remove
      */
     function remove(address _to, uint256 _amount) external override {
-        _remove(msg.sender, _to, _amount);
+        require(_to != address(0), "destination != 0");
+        require(_amount != 0, "Must remove more than 0");
+        require(userBalances[msg.sender] >= _amount, "Too much removed");
+        userBalances[msg.sender] = userBalances[msg.sender] - _amount;
+        require(graphToken.transfer(_to, _amount), "Remove transfer failed");
+        emit TokensRemoved(msg.sender, _to, _amount);
     }
 
     /**
@@ -349,24 +371,5 @@ contract Billing is IBilling, Governed, Rescuable {
         require(_l2TokenGateway != address(0), "L2 Token Gateway cannot be 0");
         l2TokenGateway = _l2TokenGateway;
         emit L2TokenGatewayUpdated(_l2TokenGateway);
-    }
-
-    /**
-     * @dev Remove tokens from the billing contract
-     * @param _from  Address from which the balance will be removed
-     * @param _to  Address that tokens will be sent to
-     * @param _amount  Amount of tokens to remove
-     */
-    function _remove(
-        address _from,
-        address _to,
-        uint256 _amount
-    ) internal {
-        require(_to != address(0), "destination != 0");
-        require(_amount != 0, "Must remove more than 0");
-        require(userBalances[_from] >= _amount, "Too much removed");
-        userBalances[_from] = userBalances[_from] - _amount;
-        require(graphToken.transfer(_to, _amount), "Remove transfer failed");
-        emit TokensRemoved(_from, _to, _amount);
     }
 }
