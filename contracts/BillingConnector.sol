@@ -213,7 +213,7 @@ contract BillingConnector is IBillingConnector, Governed, Rescuable, L1ArbitrumM
         uint256 _gasPriceBid,
         uint256 _maxSubmissionCost
     ) internal {
-        require(graphToken.transferFrom(_owner, address(this), _amount), "Add transfer failed");
+        graphToken.transferFrom(_owner, address(this), _amount);
 
         bytes memory extraData = abi.encode(_to);
         bytes memory data = abi.encode(_maxSubmissionCost, extraData);

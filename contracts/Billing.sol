@@ -221,7 +221,7 @@ contract Billing is IBilling, Governed, Rescuable {
             require(_amount[i] > 0, "Must add more than 0");
             totalAmount += _amount[i];
         }
-        require(graphToken.transferFrom(msg.sender, address(this), totalAmount), "Add transfer failed");
+        graphToken.transferFrom(msg.sender, address(this), totalAmount);
 
         // Add each amount
         for (uint256 i = 0; i < _to.length; i++) {
@@ -246,7 +246,7 @@ contract Billing is IBilling, Governed, Rescuable {
     ) private {
         require(_amount != 0, "Must add more than 0");
         require(_user != address(0), "user != 0");
-        require(graphToken.transferFrom(_from, address(this), _amount), "Add transfer failed");
+        graphToken.transferFrom(_from, address(this), _amount);
         _add(_user, _amount);
     }
 
@@ -272,7 +272,7 @@ contract Billing is IBilling, Governed, Rescuable {
         require(_amount != 0, "Must remove more than 0");
         require(userBalances[msg.sender] >= _amount, "Too much removed");
         userBalances[msg.sender] = userBalances[msg.sender] - _amount;
-        require(graphToken.transfer(_to, _amount), "Remove transfer failed");
+        graphToken.transfer(_to, _amount);
         emit TokensRemoved(msg.sender, _to, _amount);
     }
 
@@ -348,7 +348,7 @@ contract Billing is IBilling, Governed, Rescuable {
     function _sendTokens(address _to, uint256 _amount) internal {
         if (_amount > 0) {
             require(_to != address(0), "Cannot transfer to empty address");
-            require(graphToken.transfer(_to, _amount), "Token transfer failed");
+            graphToken.transfer(_to, _amount);
         }
     }
 
