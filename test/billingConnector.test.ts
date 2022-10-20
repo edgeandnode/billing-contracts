@@ -601,16 +601,7 @@ describe('BillingConnector', () => {
         .removeOnL2(user2.address, oneHundred, defaultMaxGas, defaultGasPriceBid, toBN(0), {
           value: defaultMsgValue,
         })
-      await expect(tx).revertedWith('NO_SUBMISSION_COST')
-    })
-    it('rejects calls with the wrong eth value', async function () {
-      // "me" sends the tokens from L2 Billing to user2.
-      const tx = billingConnector
-        .connect(me.signer)
-        .removeOnL2(user2.address, oneHundred, defaultMaxGas, defaultGasPriceBid, defaultMaxSubmissionPrice, {
-          value: defaultMsgValue.sub(1),
-        })
-      await expect(tx).revertedWith('WRONG_ETH_VALUE')
+      await expect(tx).revertedWith('Submission cost must be > 0')
     })
     it('rejects calls to remove zero tokens', async function () {
       // "me" sends the tokens from L2 Billing to user2.

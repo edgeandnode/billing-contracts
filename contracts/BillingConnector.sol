@@ -143,14 +143,9 @@ contract BillingConnector is IBillingConnector, Governed, Rescuable, L1ArbitrumM
 
         bytes memory l2Calldata = abi.encodeWithSelector(IBilling.removeFromL1.selector, msg.sender, _to, _amount);
 
-        require(_maxSubmissionCost > 0, "NO_SUBMISSION_COST");
-        {
-            // makes sure sufficient ETH is supplied as required for successful redemption on L2
-            // if a user does not desire immediate redemption they should provide
-            // a msg.value of AT LEAST maxSubmissionCost
-            uint256 expectedEth = _maxSubmissionCost + (_maxGas * _gasPriceBid);
-            require(msg.value >= expectedEth, "WRONG_ETH_VALUE");
-        }
+        // The bridge will validate msg.value and submission cost later, but at least fail early
+        // if no submission cost is supplied.
+        require(_maxSubmissionCost > 0, "Submission cost must be > 0");
         L2GasParams memory gasParams = L2GasParams(_maxSubmissionCost, _maxGas, _gasPriceBid);
 
         sendTxToL2(inbox, l2Billing, _to, msg.value, 0, gasParams, l2Calldata);
