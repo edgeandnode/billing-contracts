@@ -145,7 +145,7 @@ contract BillingConnector is IBillingConnector, Governed, Rescuable, L1ArbitrumM
 
         // The bridge will validate msg.value and submission cost later, but at least fail early
         // if no submission cost is supplied.
-        require(_maxSubmissionCost > 0, "Submission cost must be > 0");
+        require(_maxSubmissionCost != 0, "Submission cost must be > 0");
         L2GasParams memory gasParams = L2GasParams(_maxSubmissionCost, _maxGas, _gasPriceBid);
 
         sendTxToL2(inbox, l2Billing, _to, msg.value, 0, gasParams, l2Calldata);
