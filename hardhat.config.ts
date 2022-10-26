@@ -81,9 +81,11 @@ const config = {
   },
   solidity: {
     version: '0.8.16',
-    optimizer: {
-      enabled: true,
-      runs: 200,
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 200,
+      },
     },
   },
   defaultNetwork: 'hardhat',
