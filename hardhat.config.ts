@@ -111,6 +111,7 @@ const config = {
       goerli: process.env.ETHERSCAN_API_KEY,
       polygonMumbai: process.env.POLYGONSCAN_API_KEY,
       arbitrumOne: process.env.ARBISCAN_API_KEY,
+      arbitrumGoerli: process.env.ARBISCAN_API_KEY,
     },
   },
   abiExporter: {

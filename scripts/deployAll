@@ -91,16 +91,11 @@ function verify_billing() {
         $L2GraphTokenGateway
 }
 
-# arbitrum-goerli doesn't have hardhat-etherscan support...
-if [[ "$L2_CHAINID" -eq  "42161" ]]; then
-    echo "Verifying Billing:"
-    if ! verify_billing; then
-        echo "Retrying in 60s..."
-        sleep 60 # Give etherscan some time to catch up...
-        verify_billing
-    fi
-else
-    echo "Skipping Billing verification on Arbitrum Goerli"
+echo "Verifying Billing:"
+if ! verify_billing; then
+    echo "Retrying in 60s..."
+    sleep 60 # Give arbiscan some time to catch up...
+    verify_billing
 fi
 
 GraphToken=$(jq -r ".[\"$L1_CHAINID\"].GraphToken" addresses.json || echo "null")
