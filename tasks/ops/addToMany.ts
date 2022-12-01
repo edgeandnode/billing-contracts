@@ -34,7 +34,11 @@ task('ops:add-to-many', 'Execute a transaction depositing funds to a set of user
       try {
         logger.log('Transaction being sent')
         logger.log(`--------------------`)
-        const tx = await contracts.Billing!.connect(account).addToMany(users, balances)
+        const billing = contracts.Billing
+        if (!billing) {
+          throw new Error('Billing contract not found')
+        }
+        const tx = await billing.connect(account).addToMany(users, balances)
         const receipt = await tx.wait()
         logger.log('Receipt: ', receipt)
       } catch (e) {

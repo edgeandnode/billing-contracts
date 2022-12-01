@@ -1,7 +1,7 @@
 import fs from 'fs'
 import axios from 'axios'
 
-import { BigNumber, Contract, utils } from 'ethers'
+import { BigNumber, utils } from 'ethers'
 import { task } from 'hardhat/config'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { logger } from '../../utils/logging'
@@ -85,7 +85,10 @@ task('ops:pull-all', 'Execute transaction for pulling all funds from users')
       logger.log('Transaction being sent')
       logger.log(`--------------------`)
       try {
-        const billing = hre.contracts.Billing!
+        const billing = hre.contracts.Billing
+        if (!billing) {
+          throw new Error('Billing contract not found')
+        }
         const tx = await billing.connect(collector).pullMany(users, balances, taskArgs.dstAddress)
         const receipt = await tx.wait()
         logger.log('Receipt: ', receipt)
