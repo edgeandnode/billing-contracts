@@ -5,17 +5,11 @@ import { BigNumber, utils } from 'ethers'
 import { task } from 'hardhat/config'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { logger } from '../../utils/logging'
-import {
-  askForConfirmation,
-  DEFAULT_BILLING_SUBGRAPH,
-  DEFAULT_DEPOSITORS_FILE,
-  DEFAULT_CONTRACT_DEPOSITORS_FILE,
-} from './utils'
+import { askForConfirmation, DEFAULT_BILLING_SUBGRAPH, DEFAULT_DEPOSITORS_FILE } from './utils'
+import '../extendContracts'
 
 // This script will pull the funds from all the billing accounts and store
 // them in a file (by default, `depositors.json` in the same directory as this script).
-// Depositors that are contracts will not be included in this file, but instead
-// will be stored in a separate file (by default, `contract-depositors.json` in the same folder)
 
 interface Depositor {
   address: string
@@ -25,6 +19,7 @@ interface Depositor {
 export async function getAllDepositors(billingSubgraphUrl: string): Promise<Depositor[]> {
   const query = `{
     users(
+      first: 1000,
       where: {billingBalance_gt: "0"},
       orderBy: billingBalance,
       orderDirection: desc
@@ -59,11 +54,6 @@ task('ops:pull-all', 'Execute transaction for pulling all funds from users')
   .addFlag('dryRun', 'Do not execute transaction')
   .addOptionalParam('dstAddress', 'Destination address of withdrawal')
   .addOptionalParam('depositorsFile', 'Path to EOA depositors file', DEFAULT_DEPOSITORS_FILE)
-  .addOptionalParam(
-    'contractDepositorsFile',
-    'Path to depositors file for depositors that are contracts',
-    DEFAULT_CONTRACT_DEPOSITORS_FILE,
-  )
   .addOptionalParam('billingSubgraphUrl', 'Billing subgraph URL', DEFAULT_BILLING_SUBGRAPH)
   .setAction(async (taskArgs, hre: HardhatRuntimeEnvironment) => {
     const accounts = await hre.ethers.getSigners()
@@ -79,30 +69,13 @@ task('ops:pull-all', 'Execute transaction for pulling all funds from users')
     const users: string[] = depositors.map((depositor) => depositor.address)
     const balances: BigNumber[] = depositors.map((depositor) => depositor.balance)
 
-    const eoaDepositors: Depositor[] = []
-    const contractDepositors: Depositor[] = []
-
-    for (const depositor of depositors) {
-      const code = await hre.ethers.provider.getCode(depositor.address)
-      if (code == '0x') {
-        eoaDepositors.push(depositor)
-      } else {
-        contractDepositors.push(depositor)
-      }
-    }
-
     try {
-      writeDepositorsToFile(eoaDepositors, taskArgs.depositorsFile)
+      writeDepositorsToFile(depositors, taskArgs.depositorsFile)
     } catch (e) {
       logger.log(`Error writing depositors file: \n${e}`)
       process.exit(1)
     }
-    try {
-      writeDepositorsToFile(contractDepositors, taskArgs.contractDepositorsFile)
-    } catch (e) {
-      logger.log(`Error writing contract depositors file: \n${e}`)
-      process.exit(1)
-    }
+
     const totalBalance = balances.reduce((a, b) => a.add(b), BigNumber.from(0))
 
     logger.log(`Balance: ${utils.formatEther(totalBalance)}`)
@@ -114,7 +87,7 @@ task('ops:pull-all', 'Execute transaction for pulling all funds from users')
     if (taskArgs.dryRun) {
       logger.log('Dry run, so not executing tx')
       logger.log('Otherwise we would have executed:')
-      logger.log(`Billing.pullMany(${users}, ${balances}, ${dstAddress})`)
+      logger.log(`Billing.pullMany([${users}], [${balances}], ${dstAddress})`)
       logger.log(`On Billing contract at ${hre.contracts.Billing?.address} on chain ${chainId}`)
       logger.log(`With signer ${collector.address}`)
       process.exit()

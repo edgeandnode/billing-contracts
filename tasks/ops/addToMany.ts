@@ -4,6 +4,7 @@ import { task } from 'hardhat/config'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { logger } from '../../utils/logging'
 import { askForConfirmation, DEFAULT_DEPOSITORS_FILE } from './utils'
+import '../extendContracts'
 
 task('ops:add-to-many', 'Execute a transaction depositing funds to a set of users from a JSON file')
   .addOptionalParam('depositorsFile', 'Path to depositors file', DEFAULT_DEPOSITORS_FILE)
