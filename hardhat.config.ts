@@ -18,7 +18,7 @@ import 'solidity-coverage'
 const SKIP_LOAD = process.env.SKIP_LOAD === 'true'
 
 if (!SKIP_LOAD) {
-  ;['deployment'].forEach((folder) => {
+  ;['deployment', 'ops'].forEach((folder) => {
     const tasksPath = path.join(__dirname, 'tasks', folder)
     fs.readdirSync(tasksPath)
       .filter((pth) => pth.includes('.ts'))
