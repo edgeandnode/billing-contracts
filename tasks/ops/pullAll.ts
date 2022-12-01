@@ -56,7 +56,8 @@ function writeDepositorsToFile(depositors: Depositor[], filePath: string) {
 }
 
 task('ops:pull-all', 'Execute transaction for pulling all funds from users')
-  .addParam('dstAddress', 'Destination address of withdrawal')
+  .addFlag('dryRun', 'Do not execute transaction')
+  .addOptionalParam('dstAddress', 'Destination address of withdrawal')
   .addOptionalParam('depositorsFile', 'Path to EOA depositors file', DEFAULT_DEPOSITORS_FILE)
   .addOptionalParam(
     'contractDepositorsFile',
@@ -68,6 +69,7 @@ task('ops:pull-all', 'Execute transaction for pulling all funds from users')
     const accounts = await hre.ethers.getSigners()
     const collector = accounts[0]
     const chainId = hre.network.config.chainId
+    const dstAddress = taskArgs.dstAddress || collector.address
     logger.log('Getting depositors...')
     const depositors = await getAllDepositors(taskArgs.billingSubgraphUrl)
     if (depositors.length == 0) {
@@ -109,6 +111,14 @@ task('ops:pull-all', 'Execute transaction for pulling all funds from users')
       logger.log(depositor.address, utils.formatEther(depositor.balance))
     }
 
+    if (taskArgs.dryRun) {
+      logger.log('Dry run, so not executing tx')
+      logger.log('Otherwise we would have executed:')
+      logger.log(`Billing.pullMany(${users}, ${balances}, ${dstAddress})`)
+      logger.log(`On Billing contract at ${hre.contracts.Billing?.address} on chain ${chainId}`)
+      logger.log(`With signer ${collector.address}`)
+      process.exit()
+    }
     if (
       await askForConfirmation(
         `Execute <pullMany> transaction? **This will execute on network with chain ID ${chainId}**`,
@@ -121,7 +131,7 @@ task('ops:pull-all', 'Execute transaction for pulling all funds from users')
         if (!billing) {
           throw new Error('Billing contract not found')
         }
-        const tx = await billing.connect(collector).pullMany(users, balances, taskArgs.dstAddress)
+        const tx = await billing.connect(collector).pullMany(users, balances, dstAddress)
         const receipt = await tx.wait()
         logger.log('Receipt: ', receipt)
       } catch (e) {
