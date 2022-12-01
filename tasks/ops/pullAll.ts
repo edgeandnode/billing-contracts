@@ -5,10 +5,17 @@ import { BigNumber, utils } from 'ethers'
 import { task } from 'hardhat/config'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { logger } from '../../utils/logging'
-import { askForConfirmation, DEFAULT_BILLING_SUBGRAPH, DEFAULT_DEPOSITORS_FILE } from './utils'
+import {
+  askForConfirmation,
+  DEFAULT_BILLING_SUBGRAPH,
+  DEFAULT_DEPOSITORS_FILE,
+  DEFAULT_CONTRACT_DEPOSITORS_FILE,
+} from './utils'
 
 // This script will pull the funds from all the billing accounts and store
 // them in a file (by default, `depositors.json` in the same directory as this script).
+// Depositors that are contracts will not be included in this file, but instead
+// will be stored in a separate file (by default, `contract-depositors.json` in the same folder)
 
 interface Depositor {
   address: string
@@ -37,9 +44,25 @@ export async function getAllDepositors(billingSubgraphUrl: string): Promise<Depo
   })
 }
 
+function writeDepositorsToFile(depositors: Depositor[], filePath: string) {
+  if (fs.existsSync(filePath)) {
+    fs.unlinkSync(filePath)
+  }
+  fs.writeFileSync(filePath, JSON.stringify(depositors, null, 2), { flag: 'a+' })
+  const writtenDepositors = JSON.parse(fs.readFileSync(filePath).toString())
+  if (writtenDepositors.length != depositors.length) {
+    throw new Error('Written depositors does not equal fetched depositors')
+  }
+}
+
 task('ops:pull-all', 'Execute transaction for pulling all funds from users')
   .addParam('dstAddress', 'Destination address of withdrawal')
-  .addOptionalParam('depositorsFile', 'Path to depositors file', DEFAULT_DEPOSITORS_FILE)
+  .addOptionalParam('depositorsFile', 'Path to EOA depositors file', DEFAULT_DEPOSITORS_FILE)
+  .addOptionalParam(
+    'contractDepositorsFile',
+    'Path to depositors file for depositors that are contracts',
+    DEFAULT_CONTRACT_DEPOSITORS_FILE,
+  )
   .addOptionalParam('billingSubgraphUrl', 'Billing subgraph URL', DEFAULT_BILLING_SUBGRAPH)
   .setAction(async (taskArgs, hre: HardhatRuntimeEnvironment) => {
     const accounts = await hre.ethers.getSigners()
@@ -54,21 +77,30 @@ task('ops:pull-all', 'Execute transaction for pulling all funds from users')
     const users: string[] = depositors.map((depositor) => depositor.address)
     const balances: BigNumber[] = depositors.map((depositor) => depositor.balance)
 
+    const eoaDepositors: Depositor[] = []
+    const contractDepositors: Depositor[] = []
+
+    for (const depositor of depositors) {
+      const code = await hre.ethers.provider.getCode(depositor.address)
+      if (code == '0x') {
+        eoaDepositors.push(depositor)
+      } else {
+        contractDepositors.push(depositor)
+      }
+    }
+
     try {
-      const path = taskArgs.depositorsFile
-      if (fs.existsSync(path)) {
-        fs.unlinkSync(path)
-      }
-      fs.writeFileSync(path, JSON.stringify(depositors, null, 2), { flag: 'a+' })
-      const writeDepositors = JSON.parse(fs.readFileSync(path).toString())
-      if (writeDepositors.length != depositors.length) {
-        throw new Error('Written depositors does not equal fetched depositors')
-      }
+      writeDepositorsToFile(eoaDepositors, taskArgs.depositorsFile)
     } catch (e) {
       logger.log(`Error writing depositors file: \n${e}`)
       process.exit(1)
     }
-
+    try {
+      writeDepositorsToFile(contractDepositors, taskArgs.contractDepositorsFile)
+    } catch (e) {
+      logger.log(`Error writing contract depositors file: \n${e}`)
+      process.exit(1)
+    }
     const totalBalance = balances.reduce((a, b) => a.add(b), BigNumber.from(0))
 
     logger.log(`Balance: ${utils.formatEther(totalBalance)}`)
