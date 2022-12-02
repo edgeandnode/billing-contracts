@@ -4,7 +4,6 @@ import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import '@nomiclabs/hardhat-ethers'
 
 import { deployToken } from '../../utils/deploy'
-import '../extendContracts'
 
 task('deploy-token', 'Deploy the token contract')
   .addParam('totalSupply', 'Total supply of the token')

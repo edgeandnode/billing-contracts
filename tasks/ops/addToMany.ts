@@ -4,7 +4,6 @@ import { task } from 'hardhat/config'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { logger } from '../../utils/logging'
 import { askForConfirmation, DEFAULT_DEPOSITORS_FILE } from './utils'
-import '../extendContracts'
 
 task('ops:add-to-many', 'Execute a transaction depositing funds to a set of users from a JSON file')
   .addFlag('dryRun', 'Do not execute transaction')
@@ -32,7 +31,7 @@ task('ops:add-to-many', 'Execute a transaction depositing funds to a set of user
       logger.log('Dry run, so not executing tx')
       logger.log('Otherwise we would have executed:')
       logger.log(`Billing.addToMany([${users}], [${balances}])`)
-      logger.log(`On Billing contract at ${hre.contracts.Billing?.address} on chain ${chainId}`)
+      logger.log(`On Billing contract at ${contracts.Billing?.address} on chain ${chainId}`)
       logger.log(`With signer ${account.address}`)
       process.exit()
     }

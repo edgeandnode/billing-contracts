@@ -6,7 +6,6 @@ import { task } from 'hardhat/config'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { logger } from '../../utils/logging'
 import { askForConfirmation, DEFAULT_BILLING_SUBGRAPH, DEFAULT_DEPOSITORS_FILE } from './utils'
-import '../extendContracts'
 
 // This script will pull the funds from all the billing accounts and store
 // them in a file (by default, `depositors.json` in the same directory as this script).
@@ -58,6 +57,7 @@ task('ops:pull-all', 'Execute transaction for pulling all funds from users')
   .setAction(async (taskArgs, hre: HardhatRuntimeEnvironment) => {
     const accounts = await hre.ethers.getSigners()
     const collector = accounts[0]
+    const { contracts } = hre
     const chainId = hre.network.config.chainId
     const dstAddress = taskArgs.dstAddress || collector.address
     logger.log('Getting depositors...')
@@ -88,7 +88,7 @@ task('ops:pull-all', 'Execute transaction for pulling all funds from users')
       logger.log('Dry run, so not executing tx')
       logger.log('Otherwise we would have executed:')
       logger.log(`Billing.pullMany([${users}], [${balances}], ${dstAddress})`)
-      logger.log(`On Billing contract at ${hre.contracts.Billing?.address} on chain ${chainId}`)
+      logger.log(`On Billing contract at ${contracts.Billing?.address} on chain ${chainId}`)
       logger.log(`With signer ${collector.address}`)
       process.exit()
     }
@@ -100,7 +100,7 @@ task('ops:pull-all', 'Execute transaction for pulling all funds from users')
       logger.log('Transaction being sent')
       logger.log(`--------------------`)
       try {
-        const billing = hre.contracts.Billing
+        const billing = contracts.Billing
         if (!billing) {
           throw new Error('Billing contract not found')
         }

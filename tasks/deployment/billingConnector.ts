@@ -4,7 +4,6 @@ import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import '@nomiclabs/hardhat-ethers'
 
 import { deployBillingConnector } from '../../utils/deploy'
-import '../extendContracts'
 import addresses from '../../addresses.json'
 import { promises as fs } from 'fs'
 

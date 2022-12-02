@@ -16,6 +16,11 @@ extendEnvironment((hre: HardhatRuntimeEnvironment) => {
   const chainId = hre.network.config.chainId
   const addressBook = addresses[chainId as number]
   hre['contracts'] = lazyObject(() => {
-    return loadContracts(addressBook.billing, addressBook.billingConnector, addressBook.grt, hre.ethers.provider)
+    return loadContracts(
+      addressBook.Billing,
+      addressBook.BillingConnector,
+      addressBook.GraphToken ?? addressBook.L2GraphToken,
+      hre.ethers.provider,
+    )
   })
 })
