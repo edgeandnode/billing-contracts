@@ -7,6 +7,7 @@ import { askForConfirmation, DEFAULT_DEPOSITORS_FILE } from './utils'
 import '../extendContracts'
 
 task('ops:add-to-many', 'Execute a transaction depositing funds to a set of users from a JSON file')
+  .addFlag('dryRun', 'Do not execute transaction')
   .addOptionalParam('depositorsFile', 'Path to depositors file', DEFAULT_DEPOSITORS_FILE)
   .setAction(async (taskArgs, hre: HardhatRuntimeEnvironment) => {
     const { contracts } = hre
@@ -27,6 +28,14 @@ task('ops:add-to-many', 'Execute a transaction depositing funds to a set of user
       logger.log(depositor.address, utils.formatEther(depositor.balance.hex))
     }
 
+    if (taskArgs.dryRun) {
+      logger.log('Dry run, so not executing tx')
+      logger.log('Otherwise we would have executed:')
+      logger.log(`Billing.addToMany([${users}], [${balances}])`)
+      logger.log(`On Billing contract at ${hre.contracts.Billing?.address} on chain ${chainId}`)
+      logger.log(`With signer ${account.address}`)
+      process.exit()
+    }
     if (
       await askForConfirmation(
         `Execute <addToMany> transaction? **This will execute on network with chain ID ${chainId}**`,
