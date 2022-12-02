@@ -22,5 +22,4 @@ bin/
 /reports
 coverage.json
 
-tasks/ops/contract-depositors.json
 tasks/ops/depositors.json
