@@ -41,15 +41,22 @@ task('ops:add-to-many', 'Execute a transaction depositing funds to a set of user
       )
     ) {
       try {
-        logger.log('Transaction being sent')
+        logger.log('Transactions being sent')
         logger.log(`--------------------`)
         const billing = contracts.Billing
         if (!billing) {
           throw new Error('Billing contract not found')
         }
-        const tx = await billing.connect(account).addToMany(users, balances)
-        const receipt = await tx.wait()
-        logger.log('Receipt: ', receipt)
+        const grt = contracts.Token
+        if (!grt) {
+          throw new Error('GRT contract not found')
+        }
+        const tx1 = await grt.connect(account).approve(billing.address, totalBalance)
+        const receipt1 = await tx1.wait()
+        logger.log('approve() TX Receipt: ', receipt1)
+        const tx2 = await billing.connect(account).addToMany(users, balances)
+        const receipt2 = await tx2.wait()
+        logger.log('addToMany TX Receipt: ', receipt2)
       } catch (e) {
         logger.log(e)
         process.exit(1)
