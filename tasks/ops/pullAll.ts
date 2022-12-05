@@ -6,6 +6,7 @@ import { task } from 'hardhat/config'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { logger } from '../../utils/logging'
 import { askForConfirmation, DEFAULT_BILLING_SUBGRAPH, DEFAULT_DEPOSITORS_FILE } from './utils'
+import path from 'path'
 
 // This script will pull the funds from all the billing accounts and store
 // them in a file (by default, `depositors.json` in the same directory as this script).
@@ -61,7 +62,7 @@ task('ops:pull-all', 'Execute transaction for pulling all funds from users')
     let page = 0
     let depositors: Depositor[] = []
     if (fs.existsSync(taskArgs.depositorsFile)) {
-      fs.unlinkSync(taskArgs.depositorsFile)
+      fs.renameSync(taskArgs.depositorsFile, path.join(taskArgs.depositorsFile, '.bak'))
     }
     do {
       logger.log(`Getting depositors (page ${page})...`)
