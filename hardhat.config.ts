@@ -49,7 +49,7 @@ const networkConfigs: NetworkConfig[] = [
     url: 'https://goerli-rollup.arbitrum.io/rpc',
   },
   { network: 'polygon', chainId: 137, url: process.env.POLYGON_RPC_URL },
-  { network: 'mumbai', chainId: 80001, url: process.env.POLYGON_RPC_URL },
+  { network: 'mumbai', chainId: 80001, url: process.env.POLYGON_MUMBAI_RPC_URL },
 ]
 
 function getAccountsKeys() {
