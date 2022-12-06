@@ -18,7 +18,8 @@ import 'solidity-coverage'
 const SKIP_LOAD = process.env.SKIP_LOAD === 'true'
 
 if (!SKIP_LOAD) {
-  ;['deployment'].forEach((folder) => {
+  require('./tasks/extendContracts')
+  ;['deployment', 'ops'].forEach((folder) => {
     const tasksPath = path.join(__dirname, 'tasks', folder)
     fs.readdirSync(tasksPath)
       .filter((pth) => pth.includes('.ts'))
@@ -47,6 +48,8 @@ const networkConfigs: NetworkConfig[] = [
     chainId: 421613,
     url: 'https://goerli-rollup.arbitrum.io/rpc',
   },
+  { network: 'polygon', chainId: 137, url: process.env.POLYGON_RPC_URL },
+  { network: 'mumbai', chainId: 80001, url: process.env.POLYGON_MUMBAI_RPC_URL },
 ]
 
 function getAccountsKeys() {

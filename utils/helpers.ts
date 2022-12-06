@@ -1,5 +1,5 @@
 import hre from 'hardhat'
-import { providers, utils, BigNumber, Signer } from 'ethers'
+import { utils, BigNumber, Signer } from 'ethers'
 import { formatUnits } from 'ethers/lib/utils'
 import { EthereumProvider } from 'hardhat/types'
 
