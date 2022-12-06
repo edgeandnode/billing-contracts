@@ -62,7 +62,9 @@ describe('BanxaWrapper', () => {
       const beforeServiceBalance = await token.balanceOf(banxaFulfillmentService.address)
 
       const tx = banxaWrapper.connect(banxaFulfillmentService.signer).fulfil(user1.address, oneHundred)
-      await expect(tx).emit(banxaWrapper, 'OrderFulfilled').withArgs(user1.address, oneHundred)
+      await expect(tx)
+        .emit(banxaWrapper, 'OrderFulfilled')
+        .withArgs(banxaFulfillmentService.address, user1.address, oneHundred)
 
       const afterBillingBalance = await billing.userBalances(user1.address)
       const afterServiceBalance = await token.balanceOf(banxaFulfillmentService.address)
