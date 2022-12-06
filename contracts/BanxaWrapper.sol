@@ -4,7 +4,6 @@ pragma solidity ^0.8.16;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IBilling } from "./IBilling.sol";
-import "hardhat/console.sol";
 
 /**
  * @title Banxa Wrapper
