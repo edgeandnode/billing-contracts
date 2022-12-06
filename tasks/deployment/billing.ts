@@ -3,7 +3,6 @@ import { task } from 'hardhat/config'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 
 import { deployBilling } from '../../utils/deploy'
-import '../extendContracts'
 
 import { logger } from '../../utils/logging'
 
