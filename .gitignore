@@ -21,3 +21,5 @@ bin/
 # Coverage and other reports
 /reports
 coverage.json
+
+tasks/ops/depositors.json

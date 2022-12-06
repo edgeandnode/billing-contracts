@@ -4,8 +4,6 @@ import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import '@nomiclabs/hardhat-ethers'
 
 import { deployBilling } from '../../utils/deploy'
-import '../extendContracts'
-
 import { logger } from '../../utils/logging'
 
 import addresses from '../../addresses.json'

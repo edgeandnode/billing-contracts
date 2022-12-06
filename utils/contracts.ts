@@ -1,12 +1,12 @@
 import { providers, Signer, Contract } from 'ethers'
 import { logger } from './logging'
 import { loadArtifact } from './artifacts'
-import { Billing, BillingConnector } from '../build/types'
+import { Billing, BillingConnector, IERC20WithPermit } from '../build/types'
 
 export interface BillingContracts {
   Billing?: Billing
   BillingConnector?: BillingConnector
-  Token?: Contract
+  Token?: IERC20WithPermit
 }
 
 export const getContractAt = (
