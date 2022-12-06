@@ -12,10 +12,10 @@ import { IBilling } from "./IBilling.sol";
 contract BanxaWrapper {
     // -- State --
 
-    // The Graph Token contract
+    /// The Graph Token contract
     IERC20 public immutable graphToken;
 
-    // The billing contract
+    /// The billing contract
     IBilling public immutable billing;
 
     // -- Events --
@@ -23,7 +23,7 @@ contract BanxaWrapper {
     /**
      * @dev Order fullfilled by Banxa fulfilment service
      */
-    event OrderFulfilled(address indexed to, uint256 amount);
+    event OrderFulfilled(address indexed fulfiller, address indexed to, uint256 amount);
 
     // -- Errors --
 
@@ -70,6 +70,6 @@ contract BanxaWrapper {
         graphToken.approve(address(billing), _amount);
         billing.addTo(_to, _amount);
 
-        emit OrderFulfilled(_to, _amount);
+        emit OrderFulfilled(msg.sender, _to, _amount);
     }
 }
