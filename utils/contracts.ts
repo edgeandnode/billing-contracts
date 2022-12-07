@@ -21,6 +21,7 @@ export const loadContracts = (
   billingAddress: string | undefined,
   billingConnectorAddress: string | undefined,
   tokenAddress: string | undefined,
+  banxaAddress: string | undefined,
   signerOrProvider?: Signer | providers.Provider,
 ): BillingContracts => {
   const contracts = {}
@@ -44,6 +45,13 @@ export const loadContracts = (
       contracts['Token'] = token
       if (signerOrProvider) {
         contracts['Token'] = contracts['Token'].connect(signerOrProvider)
+      }
+    }
+    if (banxaAddress) {
+      const banxaWrapper = getContractAt('BanxaWrapper', banxaAddress)
+      contracts['BanxaWrapper'] = banxaWrapper
+      if (signerOrProvider) {
+        contracts['BanxaWrapper'] = contracts['BanxaWrapper'].connect(signerOrProvider)
       }
     }
   } catch (err) {

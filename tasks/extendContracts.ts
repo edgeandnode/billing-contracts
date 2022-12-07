@@ -19,6 +19,7 @@ extendEnvironment((hre: HardhatRuntimeEnvironment) => {
       addressBook?.Billing,
       addressBook?.BillingConnector,
       addressBook?.GraphToken ?? addressBook?.L2GraphToken,
+      addressBook?.BanxaWrapper,
       hre.ethers.provider,
     )
   })
