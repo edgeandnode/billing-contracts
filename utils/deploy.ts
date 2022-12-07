@@ -3,6 +3,7 @@ import { Contract, Signer, ContractFactory, utils, BigNumber } from 'ethers'
 import { logger } from './logging'
 import { loadArtifact } from './artifacts'
 import { Billing } from '../build/types/contracts/Billing'
+import { BanxaWrapper } from '../build/types/contracts/BanxaWrapper'
 
 const hash = (input: string): string => utils.keccak256(`0x${input.replace(/^0x/, '')}`)
 
@@ -57,6 +58,15 @@ export async function deployToken(
   disableLogging?: boolean,
 ): Promise<Contract> {
   return deployContract(args, sender, 'Token', disableLogging) as unknown as Promise<Contract>
+}
+
+// Pass the args in order to this func
+export async function deployBanxaWrapper(
+  args: Array<string | BigNumber>,
+  sender: Signer,
+  disableLogging?: boolean,
+): Promise<BanxaWrapper> {
+  return deployContract(args, sender, 'BanxaWrapper', disableLogging) as unknown as Promise<BanxaWrapper>
 }
 
 // Pass the args in order to this func

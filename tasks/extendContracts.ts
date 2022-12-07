@@ -1,7 +1,6 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { extendEnvironment } from 'hardhat/config'
 import { lazyObject } from 'hardhat/plugins'
-import '@nomiclabs/hardhat-ethers'
 
 import addresses from '../addresses.json'
 import { BillingContracts, loadContracts } from '../utils/contracts'
@@ -20,6 +19,7 @@ extendEnvironment((hre: HardhatRuntimeEnvironment) => {
       addressBook?.Billing,
       addressBook?.BillingConnector,
       addressBook?.GraphToken ?? addressBook?.L2GraphToken,
+      addressBook?.BanxaWrapper,
       hre.ethers.provider,
     )
   })
