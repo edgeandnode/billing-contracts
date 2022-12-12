@@ -2,10 +2,10 @@ import fs from 'fs'
 import axios from 'axios'
 
 import { BigNumber, utils } from 'ethers'
-import { task } from 'hardhat/config'
+import { task, types } from 'hardhat/config'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { logger } from '../../utils/logging'
-import { askForConfirmation, DEFAULT_BILLING_SUBGRAPH, DEFAULT_DEPOSITORS_FILE } from './utils'
+import { askForConfirmation, DEFAULT_BILLING_SUBGRAPH, DEFAULT_DEPOSITORS_FILE, DEFAULT_BATCH_SIZE } from './utils'
 import path from 'path'
 
 // This script will pull the funds from all the billing accounts and store
@@ -16,11 +16,15 @@ interface Depositor {
   balance: BigNumber
 }
 
-export async function getAllDepositors(billingSubgraphUrl: string, page: number): Promise<Depositor[]> {
+export async function getAllDepositors(
+  billingSubgraphUrl: string,
+  page: number,
+  pageSize: number,
+): Promise<Depositor[]> {
   const query = `{
     users(
-      first: 1000,
-      skip: ${page * 1000},
+      first: ${pageSize},
+      skip: ${page * pageSize},
       where: {billingBalance_gt: "0"},
       orderBy: billingBalance,
       orderDirection: desc
@@ -41,9 +45,14 @@ export async function getAllDepositors(billingSubgraphUrl: string, page: number)
 }
 
 function writeDepositorsToFile(depositors: Depositor[], filePath: string) {
-  fs.writeFileSync(filePath, JSON.stringify(depositors, null, 2), { flag: 'a+' })
+  let allDepositors: Depositor[] = []
+  if (fs.existsSync(filePath)) {
+    allDepositors = JSON.parse(fs.readFileSync(filePath).toString())
+  }
+  allDepositors = allDepositors.concat(depositors)
+  fs.writeFileSync(filePath, JSON.stringify(allDepositors, null, 2), { flag: 'a+' })
   const writtenDepositors = JSON.parse(fs.readFileSync(filePath).toString())
-  if (writtenDepositors.length != depositors.length) {
+  if (writtenDepositors.length != allDepositors.length) {
     throw new Error('Written depositors does not equal fetched depositors')
   }
 }
@@ -51,6 +60,13 @@ function writeDepositorsToFile(depositors: Depositor[], filePath: string) {
 task('ops:pull-all', 'Execute transaction for pulling all funds from users')
   .addFlag('dryRun', 'Do not execute transaction')
   .addOptionalParam('dstAddress', 'Destination address of withdrawal')
+  .addOptionalParam(
+    'batchSize',
+    'Batch size (i.e. number of users to process at a time)',
+    DEFAULT_BATCH_SIZE,
+    types.int,
+  )
+  .addOptionalParam('startBatch', 'Batch number to start from', 0, types.int)
   .addOptionalParam('depositorsFile', 'Path to EOA depositors file', DEFAULT_DEPOSITORS_FILE)
   .addOptionalParam('billingSubgraphUrl', 'Billing subgraph URL', DEFAULT_BILLING_SUBGRAPH)
   .setAction(async (taskArgs, hre: HardhatRuntimeEnvironment) => {
@@ -59,14 +75,14 @@ task('ops:pull-all', 'Execute transaction for pulling all funds from users')
     const { contracts } = hre
     const chainId = hre.network.config.chainId
     const dstAddress = taskArgs.dstAddress || collector.address
-    let page = 0
+    let page = taskArgs.startBatch
     let depositors: Depositor[] = []
-    if (fs.existsSync(taskArgs.depositorsFile)) {
+    if (fs.existsSync(taskArgs.depositorsFile) && page == 0) {
       fs.renameSync(taskArgs.depositorsFile, path.join(taskArgs.depositorsFile, '.bak'))
     }
     do {
-      logger.log(`Getting depositors (page ${page})...`)
-      depositors = await getAllDepositors(taskArgs.billingSubgraphUrl, page)
+      logger.log(`Getting depositors (batch ${page}, size ${taskArgs.batchSize})...`)
+      depositors = await getAllDepositors(taskArgs.billingSubgraphUrl, page, taskArgs.batchSize)
       if (depositors.length == 0) {
         logger.log('No depositors found, done.')
         process.exit()
@@ -95,6 +111,16 @@ task('ops:pull-all', 'Execute transaction for pulling all funds from users')
         logger.log(`Billing.pullMany([${users}], [${balances}], ${dstAddress})`)
         logger.log(`On Billing contract at ${contracts.Billing?.address} on chain ${chainId}`)
         logger.log(`With signer ${collector.address}`)
+
+        logger.log('TX calldata:')
+        logger.log(`--------------------`)
+        const billing = contracts.Billing
+        if (!billing) {
+          throw new Error('Billing contract not found')
+        }
+        const tx = await billing.populateTransaction.pullMany(users, balances, dstAddress)
+        logger.log(tx.data)
+        logger.log(`--------------------`)
       } else if (
         await askForConfirmation(
           `Execute <pullMany> transaction? **This will execute on network with chain ID ${chainId}**`,
@@ -114,6 +140,7 @@ task('ops:pull-all', 'Execute transaction for pulling all funds from users')
           logger.log(e)
           process.exit(1)
         }
+        logger.log(`--------------------`)
       } else {
         logger.log('Bye!')
       }
