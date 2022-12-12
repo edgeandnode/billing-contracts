@@ -50,7 +50,7 @@ function writeDepositorsToFile(depositors: Depositor[], filePath: string) {
     allDepositors = JSON.parse(fs.readFileSync(filePath).toString())
   }
   allDepositors = allDepositors.concat(depositors)
-  fs.writeFileSync(filePath, JSON.stringify(allDepositors, null, 2), { flag: 'a+' })
+  fs.writeFileSync(filePath, JSON.stringify(allDepositors, null, 2), { flag: 'w+' })
   const writtenDepositors = JSON.parse(fs.readFileSync(filePath).toString())
   if (writtenDepositors.length != allDepositors.length) {
     throw new Error('Written depositors does not equal fetched depositors')
@@ -78,7 +78,7 @@ task('ops:pull-all', 'Execute transaction for pulling all funds from users')
     let page = taskArgs.startBatch
     let depositors: Depositor[] = []
     if (fs.existsSync(taskArgs.depositorsFile) && page == 0) {
-      fs.renameSync(taskArgs.depositorsFile, path.join(taskArgs.depositorsFile, '.bak'))
+      fs.renameSync(taskArgs.depositorsFile, taskArgs.depositorsFile + '.bak')
     }
     do {
       logger.log(`Getting depositors (batch ${page}, size ${taskArgs.batchSize})...`)
@@ -108,7 +108,9 @@ task('ops:pull-all', 'Execute transaction for pulling all funds from users')
       if (taskArgs.dryRun) {
         logger.log('Dry run, so not executing tx')
         logger.log('Otherwise we would have executed:')
+        logger.log(`--------------------`)
         logger.log(`Billing.pullMany([${users}], [${balances}], ${dstAddress})`)
+        logger.log(`--------------------`)
         logger.log(`On Billing contract at ${contracts.Billing?.address} on chain ${chainId}`)
         logger.log(`With signer ${collector.address}`)
 

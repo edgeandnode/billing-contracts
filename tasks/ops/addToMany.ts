@@ -83,14 +83,16 @@ task('ops:add-to-many', 'Execute a transaction depositing funds to a set of user
       const end = Math.min(start + taskArgs.batchSize, depositors.length)
       const batchUsers = users.slice(start, end)
       const batchBalances = balances.slice(start, end)
-      logger.log(`Batch ${batch}/${nBatches}:`)
+      logger.log(`Batch ${batch} (${batch + 1}/${nBatches}):`)
       logger.log(`Users: ${batchUsers.length}`)
       logger.log(`Total balance: ${utils.formatEther(batchBalances.reduce((a, b) => a.add(b), BigNumber.from(0)))}`)
       logger.log(`--------------------------------`)
       if (taskArgs.dryRun) {
         logger.log('Dry run, so not executing tx')
         logger.log('Otherwise we would have executed:')
+        logger.log(`--------------------`)
         logger.log(`Billing.addToMany([${batchUsers}], [${batchBalances}])`)
+        logger.log(`--------------------`)
         logger.log(`On Billing contract at ${contracts.Billing?.address} on chain ${chainId}`)
         logger.log(`With signer ${account.address}`)
 
