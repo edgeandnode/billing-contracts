@@ -20,9 +20,18 @@ export async function getAllDepositors(
   billingSubgraphUrl: string,
   page: number,
   pageSize: number,
+  blockNumber: number,
 ): Promise<Depositor[]> {
-  const query = `{
-    users(
+  let queryPartOne: string
+  if (blockNumber > 0) {
+    queryPartOne = `{
+      users(
+        block: { number: ${blockNumber} },`
+  } else {
+    queryPartOne = `{
+      users(`
+  }
+  const queryPartTwo = `
       first: ${pageSize},
       skip: ${page * pageSize},
       where: {billingBalance_gt: "0"},
@@ -34,6 +43,7 @@ export async function getAllDepositors(
       }
     }
   `
+  const query = queryPartOne + queryPartTwo
   const response = await axios.post(billingSubgraphUrl, { query })
   logger.log(`Found: ${response.data.data.users.length} users`)
   return response.data.data.users.map((user) => {
@@ -67,6 +77,7 @@ task('ops:pull-all', 'Execute transaction for pulling all funds from users')
     types.int,
   )
   .addOptionalParam('startBatch', 'Batch number to start from', 0, types.int)
+  .addOptionalParam('blockNumber', 'Block number to use when fetching balances from the subgraph', 0, types.int)
   .addOptionalParam('depositorsFile', 'Path to EOA depositors file', DEFAULT_DEPOSITORS_FILE)
   .addOptionalParam('billingSubgraphUrl', 'Billing subgraph URL', DEFAULT_BILLING_SUBGRAPH)
   .setAction(async (taskArgs, hre: HardhatRuntimeEnvironment) => {
@@ -76,18 +87,23 @@ task('ops:pull-all', 'Execute transaction for pulling all funds from users')
     const chainId = hre.network.config.chainId
     const dstAddress = taskArgs.dstAddress || collector.address
     let page = taskArgs.startBatch
-    let depositors: Depositor[] = []
+    const depositorBatches: Depositor[][] = []
+    if (!taskArgs.dryRun && taskArgs.startBatch > 0 && taskArgs.blockNumber == 0) {
+      logger.log('Please specify a block number when starting from a batch other than 0')
+      process.exit(1)
+    }
     if (fs.existsSync(taskArgs.depositorsFile) && page == 0) {
       fs.renameSync(taskArgs.depositorsFile, taskArgs.depositorsFile + '.bak')
     }
+    let depositors: Depositor[] = []
     do {
       logger.log(`Getting depositors (batch ${page}, size ${taskArgs.batchSize})...`)
-      depositors = await getAllDepositors(taskArgs.billingSubgraphUrl, page, taskArgs.batchSize)
+      depositors = await getAllDepositors(taskArgs.billingSubgraphUrl, page, taskArgs.batchSize, taskArgs.blockNumber)
       if (depositors.length == 0) {
-        logger.log('No depositors found, done.')
-        process.exit()
+        logger.log('No depositors found, done with fetching.')
+        break
       }
-      const users: string[] = depositors.map((depositor) => depositor.address)
+
       const balances: BigNumber[] = depositors.map((depositor) => depositor.balance)
 
       try {
@@ -104,7 +120,19 @@ task('ops:pull-all', 'Execute transaction for pulling all funds from users')
       for (const depositor of depositors) {
         logger.log(depositor.address, utils.formatEther(depositor.balance))
       }
+      depositorBatches.push(depositors)
+      page += 1
+    } while (depositors.length > 0)
 
+    page = 0
+    for (const depositors of depositorBatches) {
+      if (depositors.length == 0) {
+        logger.log('No depositors found, done.')
+        break
+      }
+      logger.log(`Pulling tokens for depositors (batch ${page}, size ${depositors.length})...`)
+      const users: string[] = depositors.map((depositor) => depositor.address)
+      const balances: BigNumber[] = depositors.map((depositor) => depositor.balance)
       if (taskArgs.dryRun) {
         logger.log('Dry run, so not executing tx')
         logger.log('Otherwise we would have executed:')
@@ -147,5 +175,5 @@ task('ops:pull-all', 'Execute transaction for pulling all funds from users')
         logger.log('Bye!')
       }
       page += 1
-    } while (depositors.length > 0)
+    }
   })
