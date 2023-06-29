@@ -3,7 +3,7 @@
 pragma solidity ^0.8.16;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IBilling } from "./IBilling.sol";
+import { IBilling } from "./interfaces/IBilling.sol";
 import { Governed } from "./Governed.sol";
 import { Rescuable } from "./Rescuable.sol";
 
@@ -44,11 +44,7 @@ contract BanxaWrapper is Governed, Rescuable {
      * @param _token Graph Token address
      * @param _billing billing contract address
      */
-    constructor(
-        IERC20 _token,
-        IBilling _billing,
-        address _governor
-    ) Governed(_governor) {
+    constructor(IERC20 _token, IBilling _billing, address _governor) Governed(_governor) {
         if (address(_token) == address(0) || address(_billing) == address(0)) {
             revert InvalidZeroAddress();
         }
@@ -85,11 +81,7 @@ contract BanxaWrapper is Governed, Rescuable {
      * @param _token  Token address of the token that was accidentally sent to the contract
      * @param _amount  Amount of tokens to pull
      */
-    function rescueTokens(
-        address _to,
-        address _token,
-        uint256 _amount
-    ) external onlyGovernor {
+    function rescueTokens(address _to, address _token, uint256 _amount) external onlyGovernor {
         _rescueTokens(_to, _token, _amount);
     }
 }

@@ -22,11 +22,7 @@ contract Rescuable {
      * @param _token  Token address of the token that was accidentally sent to the contract
      * @param _amount  Amount of tokens to pull
      */
-    function _rescueTokens(
-        address _to,
-        address _token,
-        uint256 _amount
-    ) internal {
+    function _rescueTokens(address _to, address _token, uint256 _amount) internal {
         require(_to != address(0), "Cannot send to address(0)");
         require(_amount != 0, "Cannot rescue 0 tokens");
         IERC20 token = IERC20(_token);

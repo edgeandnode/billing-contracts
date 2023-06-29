@@ -3,12 +3,12 @@
 pragma solidity ^0.8.16;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IBilling } from "./IBilling.sol";
-import { IBillingConnector } from "./IBillingConnector.sol";
+import { IBilling } from "./interfaces/IBilling.sol";
+import { IBillingConnector } from "./interfaces/IBillingConnector.sol";
 import { Governed } from "./Governed.sol";
 import { ITokenGateway } from "arb-bridge-peripherals/contracts/tokenbridge/libraries/gateway/ITokenGateway.sol";
 import { Rescuable } from "./Rescuable.sol";
-import { IERC20WithPermit } from "./IERC20WithPermit.sol";
+import { IERC20WithPermit } from "./interfaces/IERC20WithPermit.sol";
 import { L1ArbitrumMessenger } from "./arbitrum/L1ArbitrumMessenger.sol";
 
 /**
@@ -188,11 +188,7 @@ contract BillingConnector is IBillingConnector, Governed, Rescuable, L1ArbitrumM
      * @param _token  Token address of the token that was accidentally sent to the contract
      * @param _amount  Amount of tokens to pull
      */
-    function rescueTokens(
-        address _to,
-        address _token,
-        uint256 _amount
-    ) external override onlyGovernor {
+    function rescueTokens(address _to, address _token, uint256 _amount) external override onlyGovernor {
         _rescueTokens(_to, _token, _amount);
     }
 

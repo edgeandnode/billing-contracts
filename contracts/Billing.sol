@@ -4,7 +4,7 @@ pragma solidity ^0.8.16;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
-import { IBilling } from "./IBilling.sol";
+import { IBilling } from "./interfaces/IBilling.sol";
 import { Governed } from "./Governed.sol";
 import { Rescuable } from "./Rescuable.sol";
 import { AddressAliasHelper } from "./arbitrum/AddressAliasHelper.sol";
@@ -78,12 +78,7 @@ contract Billing is IBilling, Governed, Rescuable {
      * @param _token     Graph Token address
      * @param _governor  Governor address
      */
-    constructor(
-        address _collector,
-        IERC20 _token,
-        address _governor,
-        address _l2TokenGateway
-    ) Governed(_governor) {
+    constructor(address _collector, IERC20 _token, address _governor, address _l2TokenGateway) Governed(_governor) {
         _setCollector(_collector, true);
         _setL2TokenGateway(_l2TokenGateway);
         graphToken = _token;
@@ -190,11 +185,7 @@ contract Billing is IBilling, Governed, Rescuable {
      * @param _to Address to send the tokens
      * @param _amount  Amount of tokens to remove
      */
-    function removeFromL1(
-        address _from,
-        address _to,
-        uint256 _amount
-    ) external override onlyL1BillingConnector {
+    function removeFromL1(address _from, address _to, uint256 _amount) external override onlyL1BillingConnector {
         require(_to != address(0), "destination != 0");
         require(_amount != 0, "Must remove more than 0");
         if (userBalances[_from] >= _amount) {
@@ -253,11 +244,7 @@ contract Billing is IBilling, Governed, Rescuable {
      * @param _amount  Amount of tokens to pull
      * @param _to Destination to send pulled tokens
      */
-    function pull(
-        address _user,
-        uint256 _amount,
-        address _to
-    ) external override onlyCollector {
+    function pull(address _user, uint256 _amount, address _to) external override onlyCollector {
         uint256 maxAmount = _pull(_user, _amount);
         _sendTokens(_to, maxAmount);
     }
@@ -288,11 +275,7 @@ contract Billing is IBilling, Governed, Rescuable {
      * @param _token  Token address of the token that was accidentally sent to the contract
      * @param _amount  Amount of tokens to pull
      */
-    function rescueTokens(
-        address _to,
-        address _token,
-        uint256 _amount
-    ) external onlyGovernor {
+    function rescueTokens(address _to, address _token, uint256 _amount) external onlyGovernor {
         _rescueTokens(_to, _token, _amount);
     }
 
@@ -351,11 +334,7 @@ contract Billing is IBilling, Governed, Rescuable {
      * @param _user  User that is adding tokens
      * @param _amount  Amount of tokens to add
      */
-    function _pullAndAdd(
-        address _from,
-        address _user,
-        uint256 _amount
-    ) private {
+    function _pullAndAdd(address _from, address _user, uint256 _amount) private {
         require(_amount != 0, "Must add more than 0");
         require(_user != address(0), "user != 0");
         graphToken.transferFrom(_from, address(this), _amount);
