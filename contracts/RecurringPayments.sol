@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.18;
 
+import { IRecurringPayments } from "./interfaces/IRecurringPayments.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IBilling } from "./interfaces/IBilling.sol";
 import { ISubscriptions } from "./interfaces/ISubscriptions.sol";
@@ -10,23 +11,8 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { GelatoManager } from "./GelatoManager.sol";
 import { BokkyPooBahsDateTimeLibrary } from "./libs/BokkyPooBahsDateTimeLibrary.sol";
 
-contract RecurringPayments is GelatoManager {
+contract RecurringPayments is IRecurringPayments, GelatoManager {
     using SafeERC20 for IERC20;
-
-    enum RecurringPaymentType {
-        STREAM_GRT,
-        STREAM_USDC
-    }
-
-    struct RecurringPayment {
-        bytes32 taskId;
-        uint256 amount;
-        uint256 createdAt;
-        uint256 lastExecutedAt;
-        RecurringPaymentType paymentType;
-        address billingContract;
-        address billingToken;
-    }
 
     // -- State --
     // in months
@@ -156,6 +142,18 @@ contract RecurringPayments is GelatoManager {
         return (canExec, execPayload);
     }
 
+    // NET time
+    function getNextExecutionTime(address user) external view returns (uint256) {
+        RecurringPayment storage recurringPayment = _getRecurringPaymentOrRevert(user);
+        return BokkyPooBahsDateTimeLibrary.addMonths(recurringPayment.lastExecutedAt, executionInterval);
+    }
+
+    // NET time
+    function getExpirationTime(address user) external view returns (uint256) {
+        RecurringPayment storage recurringPayment = _getRecurringPaymentOrRevert(user);
+        return BokkyPooBahsDateTimeLibrary.addMonths(recurringPayment.lastExecutedAt, expirationInterval);
+    }
+
     /// Internal functions
     function _cancel(address user) private {
         RecurringPayment storage recurringPayment = _getRecurringPaymentOrRevert(user);
@@ -212,24 +210,11 @@ contract RecurringPayments is GelatoManager {
         }
     }
 
-    // NET time
-    function getNextExecutionTime(address user) public view returns (uint256) {
-        RecurringPayment storage recurringPayment = _getRecurringPaymentOrRevert(user);
-        return BokkyPooBahsDateTimeLibrary.addMonths(recurringPayment.lastExecutedAt, executionInterval);
-    }
-
-    // NET time
-    function getExpirationTime(address user) public view returns (uint256) {
-        RecurringPayment storage recurringPayment = _getRecurringPaymentOrRevert(user);
-        return BokkyPooBahsDateTimeLibrary.addMonths(recurringPayment.lastExecutedAt, expirationInterval);
-    }
-
-    function _canExecute(uint256 lastExecutedAt) internal view returns (bool) {
+    function _canExecute(uint256 lastExecutedAt) private view returns (bool) {
         return block.timestamp >= BokkyPooBahsDateTimeLibrary.addMonths(lastExecutedAt, executionInterval);
     }
 
-    // TODO: these can be public?!
-    function _canCancel(uint256 lastExecutedAt) internal view returns (bool) {
+    function _canCancel(uint256 lastExecutedAt) private view returns (bool) {
         return block.timestamp >= BokkyPooBahsDateTimeLibrary.addMonths(lastExecutedAt, expirationInterval);
     }
 
