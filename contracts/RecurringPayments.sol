@@ -2,16 +2,15 @@
 
 pragma solidity ^0.8.18;
 
-import "./gelato/AutomateTaskCreator.sol";
-
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IBilling } from "./interfaces/IBilling.sol";
 import { ISubscriptions } from "./interfaces/ISubscriptions.sol";
 
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { Governed } from "./Governed.sol";
+import { GelatoManager } from "./GelatoManager.sol";
+import { BokkyPooBahsDateTimeLibrary } from "./libs/BokkyPooBahsDateTimeLibrary.sol";
 
-contract RecurringPayments is AutomateTaskCreator, Governed {
+contract RecurringPayments is GelatoManager {
     using SafeERC20 for IERC20;
 
     enum RecurringPaymentType {
@@ -24,17 +23,16 @@ contract RecurringPayments is AutomateTaskCreator, Governed {
         uint256 amount;
         uint256 createdAt;
         uint256 lastExecutedAt;
-        uint256 nextExecutedAt;
         RecurringPaymentType paymentType;
         address billingContract;
         address billingToken;
     }
 
     // -- State --
-    uint256 public immutable PERIOD = 30 days;
-    uint256 public immutable CANCEL_PERIOD = 180 days;
+    // in months
+    uint128 public executionInterval;
+    uint128 public expirationInterval;
 
-    uint256 public maxGasPrice;
     IBilling public billing; // Billing 1.0
     ISubscriptions public subscriptions; // Billing 2.0
     IERC20 public graphToken; //
@@ -45,7 +43,8 @@ contract RecurringPayments is AutomateTaskCreator, Governed {
     // -- Events --
     event BillingAddressSet(address billing);
     event SubscriptionsAddressSet(address subscriptions);
-    event MaxGasPriceSet(uint256 maxGasPrice);
+    event ExecutionIntervalSet(uint128 executionInterval);
+    event ExpirationIntervalSet(uint128 expirationInterval);
     event RecurringPaymentCreated(
         address indexed user,
         bytes32 taskId,
@@ -56,31 +55,31 @@ contract RecurringPayments is AutomateTaskCreator, Governed {
     );
     event RecurringPaymentCancelled(address indexed user, bytes32 taskId);
     event RecurringPaymentExecuted(address indexed user, bytes32 taskId);
-    event FundsDeposited(address indexed user, uint256 amount);
-    event FundsWithdrawn(address indexed recepient, uint256 amount);
 
     // -- Errors --
     error InvalidZeroAmount();
     error InvalidZeroAddress();
     error InvalidRecurringPaymentType(uint256 rpType);
+    error InvalidIntervalValue();
     error RecurringPaymentAlreadyExists();
     error NoRecurringPaymentFound();
     error RecurringPaymentInCooldown(uint256 lastExecutedAt);
-    error NotFundsOwner();
-    error GasPriceTooHigh(uint256 gasPrice, uint256 maxGasPrice);
 
     constructor(
-        address _governor,
         address _automate,
+        address _governor,
+        uint256 _maxGasPrice,
+        uint128 _executionInterval,
+        uint128 _expirationInterval,
         IBilling _billing,
         ISubscriptions _subscriptions,
         IERC20 _graphToken,
-        IERC20 _usdcToken,
-        uint256 _maxGasPrice
-    ) AutomateTaskCreator(_automate, _governor) Governed(_governor) {
-        maxGasPrice = _maxGasPrice;
+        IERC20 _usdcToken
+    ) GelatoManager(_automate, _governor, _maxGasPrice) {
         graphToken = _graphToken;
         usdcToken = _usdcToken;
+        executionInterval = _executionInterval;
+        expirationInterval = _expirationInterval;
 
         _setBillingAddress(_billing);
         _setSubscriptionsAddress(_subscriptions);
@@ -94,7 +93,12 @@ contract RecurringPayments is AutomateTaskCreator, Governed {
         if (recurringPayment.taskId != 0) revert RecurringPaymentAlreadyExists();
 
         // Create gelato task
-        bytes32 id = _createGelatoTask(user);
+        bytes32 id = _createResolverTask(
+            address(this),
+            abi.encodeCall(this.check, (user)),
+            address(this),
+            abi.encode(this.execute.selector)
+        );
 
         // Save recurring payment
         address billingContract = _getBillingContract(type_);
@@ -104,7 +108,6 @@ contract RecurringPayments is AutomateTaskCreator, Governed {
             amount,
             block.timestamp,
             0,
-            block.timestamp + PERIOD,
             type_,
             billingContract,
             billingToken
@@ -117,7 +120,8 @@ contract RecurringPayments is AutomateTaskCreator, Governed {
     }
 
     function execute(address user) external {
-        if (tx.gasprice > maxGasPrice) revert GasPriceTooHigh(tx.gasprice, maxGasPrice);
+        // Revert if gas price is too high
+        checkGasPrice();
 
         RecurringPayment storage recurringPayment = _getRecurringPaymentOrRevert(user);
         if (_canCancel(recurringPayment.lastExecutedAt)) _cancel(user);
@@ -127,29 +131,20 @@ contract RecurringPayments is AutomateTaskCreator, Governed {
         emit RecurringPaymentExecuted(user, recurringPayment.taskId);
     }
 
-    function deposit() external payable {
-        if (msg.value == 0) revert InvalidZeroAmount();
-        taskTreasury.depositFunds{ value: msg.value }(address(this), ETH, msg.value);
-
-        emit FundsDeposited(msg.sender, msg.value);
+    function setBillingAddress(IBilling _billing) external onlyGovernor {
+        _setBillingAddress(_billing);
     }
 
-    function withdraw(address recepient, uint256 amount) external onlyGovernor {
-        taskTreasury.withdrawFunds(payable(recepient), ETH, amount);
-        emit FundsWithdrawn(recepient, amount);
+    function setSubscriptionsAddress(ISubscriptions _subscriptions) external onlyGovernor {
+        _setSubscriptionsAddress(_subscriptions);
     }
 
-    function setBillingAddress(IBilling billing_) external onlyGovernor {
-        _setBillingAddress(billing_);
+    function setExecutionInterval(uint128 _executionInterval) external onlyGovernor {
+        _setExecutionInterval(_executionInterval);
     }
 
-    function setSubscriptionsAddress(ISubscriptions subscriptions_) external onlyGovernor {
-        _setSubscriptionsAddress(subscriptions_);
-    }
-
-    function setMaxGasPrice(uint256 newGasPrice) external onlyGovernor {
-        maxGasPrice = newGasPrice;
-        emit MaxGasPriceSet(maxGasPrice);
+    function setExpirationInterval(uint128 _expirationInterval) external onlyGovernor {
+        _setExpirationInterval(_expirationInterval);
     }
 
     function check(address user) external view returns (bool canExec, bytes memory execPayload) {
@@ -161,22 +156,12 @@ contract RecurringPayments is AutomateTaskCreator, Governed {
         return (canExec, execPayload);
     }
 
-    ///
     /// Internal functions
     function _cancel(address user) private {
         RecurringPayment storage recurringPayment = _getRecurringPaymentOrRevert(user);
-        _cancelTask(recurringPayment.taskId);
+        _cancelResolverTask(recurringPayment.taskId);
         delete recurringPayments[user];
         emit RecurringPaymentCancelled(user, recurringPayment.taskId);
-    }
-
-    function _createGelatoTask(address user) private returns (bytes32) {
-        ModuleData memory moduleData = ModuleData({ modules: new Module[](1), args: new bytes[](1) });
-
-        moduleData.modules[0] = Module.RESOLVER;
-        moduleData.args[0] = _resolverModuleArg(address(this), abi.encodeCall(this.check, (user)));
-
-        return _createTask(address(this), abi.encode(this.execute.selector), moduleData, address(0));
     }
 
     function _pullAndAdd(RecurringPaymentType type_, address user, uint256 amount) private {
@@ -205,6 +190,18 @@ contract RecurringPayments is AutomateTaskCreator, Governed {
         emit SubscriptionsAddressSet(address(subscriptions));
     }
 
+    function _setExecutionInterval(uint128 _executionInterval) private {
+        if (_executionInterval == 0) revert InvalidIntervalValue();
+        executionInterval = _executionInterval;
+        emit ExecutionIntervalSet(_executionInterval);
+    }
+
+    function _setExpirationInterval(uint128 _expirationInterval) private {
+        if (_expirationInterval == 0 || _expirationInterval <= executionInterval) revert InvalidIntervalValue();
+        executionInterval = _expirationInterval;
+        emit ExpirationIntervalSet(_expirationInterval);
+    }
+
     function _getBillingContract(RecurringPaymentType type_) private view returns (address) {
         if (type_ == RecurringPaymentType.STREAM_GRT) {
             return address(billing);
@@ -215,13 +212,25 @@ contract RecurringPayments is AutomateTaskCreator, Governed {
         }
     }
 
+    // NET time
+    function getNextExecutionTime(address user) public view returns (uint256) {
+        RecurringPayment storage recurringPayment = _getRecurringPaymentOrRevert(user);
+        return BokkyPooBahsDateTimeLibrary.addMonths(recurringPayment.lastExecutedAt, executionInterval);
+    }
+
+    // NET time
+    function getExpirationTime(address user) public view returns (uint256) {
+        RecurringPayment storage recurringPayment = _getRecurringPaymentOrRevert(user);
+        return BokkyPooBahsDateTimeLibrary.addMonths(recurringPayment.lastExecutedAt, expirationInterval);
+    }
+
     function _canExecute(uint256 lastExecutedAt) internal view returns (bool) {
-        return (block.timestamp - lastExecutedAt) >= PERIOD;
+        return block.timestamp >= BokkyPooBahsDateTimeLibrary.addMonths(lastExecutedAt, executionInterval);
     }
 
     // TODO: these can be public?!
     function _canCancel(uint256 lastExecutedAt) internal view returns (bool) {
-        return (block.timestamp - lastExecutedAt) >= CANCEL_PERIOD;
+        return block.timestamp >= BokkyPooBahsDateTimeLibrary.addMonths(lastExecutedAt, expirationInterval);
     }
 
     function _getBillingToken(RecurringPaymentType type_) private view returns (address) {
