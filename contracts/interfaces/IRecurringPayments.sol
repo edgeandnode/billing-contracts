@@ -6,9 +6,11 @@ import { IBilling } from "./IBilling.sol";
 import { ISubscriptions } from "./ISubscriptions.sol";
 
 interface IRecurringPayments {
-    enum RecurringPaymentType {
-        STREAM_GRT,
-        STREAM_USDC
+    struct BillingContract {
+        uint256 id;
+        address contractAddress;
+        address tokenAddress;
+        string name;
     }
 
     struct RecurringPayment {
@@ -16,24 +18,22 @@ interface IRecurringPayments {
         uint256 amount;
         uint256 createdAt;
         uint256 lastExecutedAt;
-        RecurringPaymentType paymentType;
-        address billingContract;
-        address billingToken;
+        BillingContract billingContract;
     }
 
-    function create(RecurringPaymentType type_, uint256 amount) external;
+    function create(string calldata billingContractName, uint256 amount) external;
 
     function cancel() external;
 
     function execute(address user) external;
 
-    function setBillingAddress(IBilling _billing) external;
-
-    function setSubscriptionsAddress(ISubscriptions _subscriptions) external;
-
     function setExecutionInterval(uint128 _executionInterval) external;
 
     function setExpirationInterval(uint128 _expirationInterval) external;
+
+    function registerBillingContract(string calldata name, address contractAddress, address tokenAddress) external;
+
+    function unregisterBillingContract(string calldata name) external;
 
     function check(address user) external view returns (bool canExec, bytes memory execPayload);
 
@@ -42,4 +42,6 @@ interface IRecurringPayments {
 
     // NET time
     function getExpirationTime(address user) external view returns (uint256);
+
+    function getBillingContractId(string calldata name) external pure returns (uint256);
 }
