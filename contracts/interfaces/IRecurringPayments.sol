@@ -2,14 +2,14 @@
 
 pragma solidity ^0.8.18;
 
-import { IBilling } from "./IBilling.sol";
-import { ISubscriptions } from "./ISubscriptions.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IPayment } from "./IPayment.sol";
 
 interface IRecurringPayments {
-    struct BillingContract {
+    struct PaymentType {
         uint256 id;
-        address contractAddress;
-        address tokenAddress;
+        IPayment contractAddress;
+        IERC20 tokenAddress;
         string name;
     }
 
@@ -18,10 +18,10 @@ interface IRecurringPayments {
         uint256 amount;
         uint256 createdAt;
         uint256 lastExecutedAt;
-        BillingContract billingContract;
+        PaymentType paymentType;
     }
 
-    function create(string calldata billingContractName, uint256 amount) external;
+    function create(string calldata paymentTypeName, uint256 amount) external;
 
     function cancel() external;
 
@@ -31,9 +31,9 @@ interface IRecurringPayments {
 
     function setExpirationInterval(uint128 _expirationInterval) external;
 
-    function registerBillingContract(string calldata name, address contractAddress, address tokenAddress) external;
+    function registerPaymentType(string calldata name, address contractAddress, address tokenAddress) external;
 
-    function unregisterBillingContract(string calldata name) external;
+    function unregisterPaymentType(string calldata name) external;
 
     function check(address user) external view returns (bool canExec, bytes memory execPayload);
 
@@ -43,5 +43,5 @@ interface IRecurringPayments {
     // NET time
     function getExpirationTime(address user) external view returns (uint256);
 
-    function getBillingContractId(string calldata name) external pure returns (uint256);
+    function getPaymentTypeId(string calldata name) external pure returns (uint256);
 }

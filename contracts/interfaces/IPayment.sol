@@ -2,6 +2,6 @@
 
 pragma solidity ^0.8.18;
 
-interface IRPBillingContract {
+interface IPayment {
     function topUp(address recepient, uint256 amount) external;
 }

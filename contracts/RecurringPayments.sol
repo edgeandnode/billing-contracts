@@ -4,7 +4,7 @@ pragma solidity ^0.8.18;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IRecurringPayments } from "./interfaces/IRecurringPayments.sol";
-import { IRPBillingContract } from "./interfaces/IRPBillingContract.sol";
+import { IPayment } from "./interfaces/IPayment.sol";
 
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
@@ -20,7 +20,7 @@ contract RecurringPayments is IRecurringPayments, GelatoManager {
     uint128 public expirationInterval;
 
     mapping(address user => RecurringPayment recurringPayment) public recurringPayments;
-    mapping(uint256 billingContractId => BillingContract billingContract) public billingContracts;
+    mapping(uint256 id => PaymentType paymentType) public paymentTypes;
 
     // -- Events --
     event ExecutionIntervalSet(uint128 executionInterval);
@@ -28,21 +28,16 @@ contract RecurringPayments is IRecurringPayments, GelatoManager {
     event RecurringPaymentCreated(
         address indexed user,
         bytes32 taskId,
-        uint256 indexed billingContractId,
-        string indexed billingContractName,
-        address billingContractAddress,
-        address billingContractToken,
+        uint256 indexed paymentTypeId,
+        string indexed paymentTypeName,
+        address paymentContractAddress,
+        address paymentTokenAddress,
         uint256 amount
     );
     event RecurringPaymentCancelled(address indexed user, bytes32 taskId);
     event RecurringPaymentExecuted(address indexed user, bytes32 taskId);
-    event BillingContractRegistered(
-        uint256 billingContractId,
-        string name,
-        address contractAddress,
-        address tokenAddress
-    );
-    event BillingContractUnregistered(uint256 billingContractId, string name);
+    event PaymentTypeRegistered(uint256 id, string name, address contractAddress, address tokenAddress);
+    event PaymentTypeUnregistered(uint256 id, string name);
 
     // -- Errors --
     error InvalidZeroAmount();
@@ -51,8 +46,8 @@ contract RecurringPayments is IRecurringPayments, GelatoManager {
     error RecurringPaymentAlreadyExists();
     error NoRecurringPaymentFound();
     error RecurringPaymentInCooldown(uint256 lastExecutedAt);
-    error BillingContractAlreadyRegistered(string name, uint256 billingContractId);
-    error BillingContractDoesNotExist(string name);
+    error PaymentTypeAlreadyRegistered(uint256 id, string name);
+    error PaymentTypeDoesNotExist(string name);
 
     constructor(
         address _automate,
@@ -65,10 +60,10 @@ contract RecurringPayments is IRecurringPayments, GelatoManager {
         expirationInterval = _expirationInterval;
     }
 
-    function create(string calldata billingContractName, uint256 amount) external {
+    function create(string calldata paymentTypeName, uint256 amount) external {
         if (amount == 0) revert InvalidZeroAmount();
 
-        BillingContract storage billingContract = _getBillingContractOrRevert(billingContractName);
+        PaymentType storage paymentType = _getPaymentTypeOrRevert(paymentTypeName);
 
         address user = msg.sender;
         RecurringPayment storage recurringPayment = recurringPayments[user];
@@ -83,14 +78,14 @@ contract RecurringPayments is IRecurringPayments, GelatoManager {
         );
 
         // Save recurring payment
-        recurringPayments[user] = RecurringPayment(id, amount, block.timestamp, 0, billingContract);
+        recurringPayments[user] = RecurringPayment(id, amount, block.timestamp, 0, paymentType);
         emit RecurringPaymentCreated(
             user,
             id,
-            billingContract.id,
-            billingContract.name,
-            billingContract.contractAddress,
-            address(billingContract.tokenAddress),
+            paymentType.id,
+            paymentType.name,
+            address(paymentType.contractAddress),
+            address(paymentType.tokenAddress),
             amount
         );
     }
@@ -104,7 +99,7 @@ contract RecurringPayments is IRecurringPayments, GelatoManager {
         checkGasPrice();
 
         RecurringPayment storage recurringPayment = _getRecurringPaymentOrRevert(user);
-        BillingContract memory billingContract = recurringPayment.billingContract;
+        PaymentType memory paymentType = recurringPayment.paymentType;
 
         if (_canCancel(recurringPayment.lastExecutedAt)) _cancel(user);
         if (!_canExecute(recurringPayment.lastExecutedAt))
@@ -112,8 +107,8 @@ contract RecurringPayments is IRecurringPayments, GelatoManager {
 
         recurringPayment.lastExecutedAt = block.timestamp;
 
-        IERC20(billingContract.tokenAddress).safeTransferFrom(user, address(this), recurringPayment.amount);
-        IRPBillingContract(billingContract.contractAddress).topUp(user, recurringPayment.amount);
+        paymentType.tokenAddress.safeTransferFrom(user, address(this), recurringPayment.amount);
+        paymentType.contractAddress.topUp(user, recurringPayment.amount);
 
         emit RecurringPaymentExecuted(user, recurringPayment.taskId);
     }
@@ -126,7 +121,7 @@ contract RecurringPayments is IRecurringPayments, GelatoManager {
         _setExpirationInterval(_expirationInterval);
     }
 
-    function registerBillingContract(
+    function registerPaymentType(
         string calldata name,
         address contractAddress,
         address tokenAddress
@@ -134,19 +129,19 @@ contract RecurringPayments is IRecurringPayments, GelatoManager {
         if (Address.isContract(contractAddress) == false) revert InvalidZeroAddress();
         if (Address.isContract(address(tokenAddress)) == false) revert InvalidZeroAddress();
 
-        uint256 billingContractId = _buildBillingContractId(name);
-        BillingContract storage billingContract = billingContracts[billingContractId];
+        uint256 id = _buildPaymentTypeId(name);
+        PaymentType storage paymentType = paymentTypes[id];
 
-        if (billingContract.id != 0) revert BillingContractAlreadyRegistered(name, billingContractId);
+        if (paymentType.id != 0) revert PaymentTypeAlreadyRegistered(id, name);
 
-        billingContracts[billingContractId] = BillingContract(billingContractId, contractAddress, tokenAddress, name);
-        emit BillingContractRegistered(billingContractId, name, contractAddress, address(tokenAddress));
+        paymentTypes[id] = PaymentType(id, IPayment(contractAddress), IERC20(tokenAddress), name);
+        emit PaymentTypeRegistered(id, name, contractAddress, address(tokenAddress));
     }
 
-    function unregisterBillingContract(string calldata name) external onlyGovernor {
-        BillingContract storage billingContract = _getBillingContractOrRevert(name);
-        delete billingContracts[billingContract.id];
-        emit BillingContractUnregistered(billingContract.id, name);
+    function unregisterPaymentType(string calldata name) external onlyGovernor {
+        PaymentType storage paymentType = _getPaymentTypeOrRevert(name);
+        delete paymentTypes[paymentType.id];
+        emit PaymentTypeUnregistered(paymentType.id, name);
     }
 
     function check(address user) external view returns (bool canExec, bytes memory execPayload) {
@@ -170,8 +165,8 @@ contract RecurringPayments is IRecurringPayments, GelatoManager {
         return BokkyPooBahsDateTimeLibrary.addMonths(recurringPayment.lastExecutedAt, expirationInterval);
     }
 
-    function getBillingContractId(string calldata name) external pure returns (uint256) {
-        return _buildBillingContractId(name);
+    function getPaymentTypeId(string calldata name) external pure returns (uint256) {
+        return _buildPaymentTypeId(name);
     }
 
     /// Internal functions
@@ -208,13 +203,13 @@ contract RecurringPayments is IRecurringPayments, GelatoManager {
         return recurringPayment;
     }
 
-    function _getBillingContractOrRevert(string calldata name) private view returns (BillingContract storage) {
-        BillingContract storage billingContract = billingContracts[_buildBillingContractId(name)];
-        if (billingContract.id == 0) revert BillingContractDoesNotExist(name);
-        return billingContract;
+    function _getPaymentTypeOrRevert(string calldata name) private view returns (PaymentType storage) {
+        PaymentType storage paymentType = paymentTypes[_buildPaymentTypeId(name)];
+        if (paymentType.id == 0) revert PaymentTypeDoesNotExist(name);
+        return paymentType;
     }
 
-    function _buildBillingContractId(string calldata name) private pure returns (uint256) {
+    function _buildPaymentTypeId(string calldata name) private pure returns (uint256) {
         return uint256(keccak256(abi.encode(name)));
     }
 }
