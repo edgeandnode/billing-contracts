@@ -70,22 +70,6 @@ interface IRecurringPayments {
     function execute(address user) external;
 
     /**
-     * @notice Sets the minimum execution interval for recurring payments.
-     * @dev The new interval will only apply to recurring payments created after the change.
-     * @param _executionInterval The new execution interval in months. Must be greater than zero.
-     */
-    function setExecutionInterval(uint128 _executionInterval) external;
-
-    /**
-     * @notice Sets the minimum expiration interval for recurring payments.
-     * This is the amount of time that has to pass without successful payment execution before the recurring payment
-     * is automatically cancelled.
-     * @dev The new interval will only apply to recurring payments created after the change.
-     * @param _expirationInterval The new expiration interval in months. Must be greater than the `executionInterval`.
-     */
-    function setExpirationInterval(uint128 _expirationInterval) external;
-
-    /**
      * @notice Registers a payment type.
      * The new payment type will only be available for recurring payments created after the registration.
      * @dev Payment contract must implement IPayment interface.
@@ -106,11 +90,25 @@ interface IRecurringPayments {
     function unregisterPaymentType(string calldata name) external;
 
     /**
+     * @notice Sets the minimum execution interval for recurring payments.
+     * @param _executionInterval The new execution interval in months. Must be greater than zero.
+     */
+    function setExecutionInterval(uint128 _executionInterval) external;
+
+    /**
+     * @notice Sets the minimum expiration interval for recurring payments.
+     * This is the amount of time that has to pass without successful payment execution before the recurring payment
+     * is automatically cancelled.
+     * @param _expirationInterval The new expiration interval in months. Must be greater than the `executionInterval`.
+     */
+    function setExpirationInterval(uint128 _expirationInterval) external;
+
+    /**
      * @notice Checks if a recurring payment can be executed.
+     * @dev Meant to be called by the Gelato Runners to know when/how to execute a recurring payment.
      * @param user The user for which to check the recurring payment.
      * @return canExec Whether the recurring payment can be executed.
      * @return execPayload Calldata indicating the function and parameters to execute a recurring payment (`execute(user)`).
-     * @dev This function is meant to be called by the Gelato Runners to know when/how to execute a recurring payment.
      */
     function check(address user) external view returns (bool canExec, bytes memory execPayload);
 
@@ -119,6 +117,7 @@ interface IRecurringPayments {
      * Note that it might not get executed precisely at the given time, the only guarantee is that it won't run before it.
      * @dev This is controlled by the `executionInterval` parameter.
      * @param user User address
+     * @return Timestamp for the next earliest time the recurring payment can be executed
      */
     function getNextExecutionTime(address user) external view returns (uint256);
 
@@ -127,6 +126,7 @@ interface IRecurringPayments {
      * Note that it might not get executed precisely at the given time, the only guarantee is that it won't run before it.
      * @dev This is controlled by the `expirationTime` parameter.
      * @param user User address
+     * @return Timestamp for the next earliest time the recurring payment can be cancelled due to expiration
      */
     function getExpirationTime(address user) external view returns (uint256);
 
@@ -134,6 +134,7 @@ interface IRecurringPayments {
      * @notice Returns the payment type id for a given name
      * @dev The `id` is computed as the keccak256 hash of the name
      * @param name Name of the payment type
+     * @return Computed `id` for a payment type name
      */
     function getPaymentTypeId(string calldata name) external pure returns (uint256);
 }

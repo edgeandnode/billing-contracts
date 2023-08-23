@@ -226,7 +226,7 @@ contract RecurringPayments is IRecurringPayments, GelatoManager {
         RecurringPayment storage recurringPayment = _getRecurringPaymentOrRevert(user);
         PaymentType memory paymentType = recurringPayment.paymentType;
 
-        // If task has failed for long enough, cancel it
+        // Cancel the recurring payment if it has failed for long enough
         if (_canCancel(recurringPayment.lastExecutedAt)) _cancel(user, true);
 
         // Prevent early execution by third parties
@@ -242,14 +242,15 @@ contract RecurringPayments is IRecurringPayments, GelatoManager {
         emit RecurringPaymentExecuted(user, recurringPayment.taskId);
     }
 
-    function setExecutionInterval(uint128 _executionInterval) external onlyGovernor {
-        _setExecutionInterval(_executionInterval);
-    }
-
-    function setExpirationInterval(uint128 _expirationInterval) external onlyGovernor {
-        _setExpirationInterval(_expirationInterval);
-    }
-
+    /**
+     * @notice Registers a payment type.
+     * The new payment type will only be available for recurring payments created after the registration.
+     * @dev Payment contract must implement IPayment interface.
+     * @dev Grants `contractAddress` an infinite spending allowance on the `tokenAddress`
+     * @param name The name of the payment type. Must be unique.
+     * @param contractAddress Address of the payment system contract.
+     * @param tokenAddress Address of the payment system token contract.
+     */
     function registerPaymentType(
         string calldata name,
         address contractAddress,
@@ -259,22 +260,60 @@ contract RecurringPayments is IRecurringPayments, GelatoManager {
             revert AddressNotAContract();
 
         uint256 id = _buildPaymentTypeId(name);
+
+        // Ensure name is unique
         PaymentType storage paymentType = paymentTypes[id];
         if (paymentType.id != 0) revert PaymentTypeAlreadyRegistered(id, name);
+
         paymentTypes[id] = PaymentType(id, IPayment(contractAddress), IERC20(tokenAddress), name);
 
+        // Grant target payment contract allowance to pull from the recurring payments contract
         IERC20(tokenAddress).approve(contractAddress, type(uint256).max);
 
         emit PaymentTypeRegistered(id, name, contractAddress, tokenAddress);
     }
 
+    /**
+     * @notice Unregisters a payment type.
+     * Note that this will not cancel any recurring payments using the payment type. Those will continue to run
+     * for as long as the recurring payment exists.
+     * @dev Revokes any spending allowance this contract previously granted to the payment contract.
+     * @param name The name of the payment type to unregister. Must exist.
+     */
     function unregisterPaymentType(string calldata name) external onlyGovernor {
         PaymentType memory paymentType = _getPaymentTypeOrRevert(name);
         delete paymentTypes[paymentType.id];
+
+        // Revoke allowance
         IERC20(paymentType.tokenAddress).approve(address(paymentType.contractAddress), 0);
         emit PaymentTypeUnregistered(paymentType.id, name);
     }
 
+    /**
+     * @notice Sets the minimum execution interval for recurring payments.
+     * @param _executionInterval The new execution interval in months. Must be greater than zero.
+     */
+    function setExecutionInterval(uint128 _executionInterval) external onlyGovernor {
+        _setExecutionInterval(_executionInterval);
+    }
+
+    /**
+     * @notice Sets the minimum expiration interval for recurring payments.
+     * This is the amount of time that has to pass without successful payment execution before the recurring payment
+     * is automatically cancelled.
+     * @param _expirationInterval The new expiration interval in months. Must be greater than the `executionInterval`.
+     */
+    function setExpirationInterval(uint128 _expirationInterval) external onlyGovernor {
+        _setExpirationInterval(_expirationInterval);
+    }
+
+    /**
+     * @notice Checks if a recurring payment can be executed.
+     * @dev Meant to be called by the Gelato Runners to know when/how to execute a recurring payment.
+     * @param user The user for which to check the recurring payment.
+     * @return canExec Whether the recurring payment can be executed.
+     * @return execPayload Calldata indicating the function and parameters to execute a recurring payment (`execute(user)`).
+     */
     function check(address user) external view returns (bool canExec, bytes memory execPayload) {
         RecurringPayment storage recurringPayment = _getRecurringPaymentOrRevert(user);
 
@@ -284,62 +323,123 @@ contract RecurringPayments is IRecurringPayments, GelatoManager {
         return (canExec, execPayload);
     }
 
-    // NET time
+    /**
+     * @notice Gets the next possible execution time for a user's recurring payment
+     * Note that it might not get executed precisely at the given time, the only guarantee is that it won't run before it.
+     * @dev This is controlled by the `executionInterval` parameter.
+     * @param user User address
+     * @return Timestamp for the next earliest time the recurring payment can be executed
+     */
     function getNextExecutionTime(address user) external view returns (uint256) {
         RecurringPayment storage recurringPayment = _getRecurringPaymentOrRevert(user);
         return BokkyPooBahsDateTimeLibrary.addMonths(recurringPayment.lastExecutedAt, executionInterval);
     }
 
-    // NET time
+    /**
+     * @notice Gets the expiration time for a user's recurring payment
+     * Note that it might not get executed precisely at the given time, the only guarantee is that it won't run before it.
+     * @dev This is controlled by the `expirationTime` parameter.
+     * @param user User address
+     * @return Timestamp for the next earliest time the recurring payment can be cancelled due to expiration
+     */
     function getExpirationTime(address user) external view returns (uint256) {
         RecurringPayment storage recurringPayment = _getRecurringPaymentOrRevert(user);
         return BokkyPooBahsDateTimeLibrary.addMonths(recurringPayment.lastExecutedAt, expirationInterval);
     }
 
+    /**
+     * @notice Returns the payment type id for a given name
+     * @dev The `id` is computed as the keccak256 hash of the name
+     * @param name Name of the payment type
+     * @return Computed `id` for a payment type name
+     */
     function getPaymentTypeId(string calldata name) external pure returns (uint256) {
         return _buildPaymentTypeId(name);
     }
 
-    /// Internal functions
+    /**
+     * @notice Cancel a recurring payment
+     * @param user User the recurring payment was cancelled for
+     * @param forced Wether or not the recurring payment was automatically cancelled
+     */
     function _cancel(address user, bool forced) private {
-        RecurringPayment storage recurringPayment = _getRecurringPaymentOrRevert(user);
-        _cancelResolverTask(recurringPayment.taskId);
+        RecurringPayment memory recurringPayment = _getRecurringPaymentOrRevert(user);
         delete recurringPayments[user];
+
+        // Cancel the task in Gelato Network
+        _cancelResolverTask(recurringPayment.taskId);
+
         emit RecurringPaymentCancelled(user, recurringPayment.taskId, forced);
     }
 
+    /**
+     * @notice Sets the minimum execution interval for recurring payments.
+     * @param _executionInterval The new execution interval in months. Must be greater than zero.
+     */
     function _setExecutionInterval(uint128 _executionInterval) private {
         if (_executionInterval == 0) revert InvalidIntervalValue();
         executionInterval = _executionInterval;
         emit ExecutionIntervalSet(_executionInterval);
     }
 
+    /**
+     * @notice Sets the minimum expiration interval for recurring payments.
+     * This is the amount of time that has to pass without successful payment execution before the recurring payment
+     * is automatically cancelled.
+     * @param _expirationInterval The new expiration interval in months. Must be greater than the `executionInterval`.
+     */
     function _setExpirationInterval(uint128 _expirationInterval) private {
         if (_expirationInterval == 0 || _expirationInterval <= executionInterval) revert InvalidIntervalValue();
         executionInterval = _expirationInterval;
         emit ExpirationIntervalSet(_expirationInterval);
     }
 
+    /**
+     * @notice Checks wether a recurring payment can be executed based on it's last execution
+     * @param lastExecutedAt Timestamp the recurring payment was last executed
+     * @return True if the recurring payment can be executed
+     */
     function _canExecute(uint256 lastExecutedAt) private view returns (bool) {
         return block.timestamp >= BokkyPooBahsDateTimeLibrary.addMonths(lastExecutedAt, executionInterval);
     }
 
+    /**
+     * @notice Checks wether a recurring payment can be cancelled based on it's last execution
+     * @param lastExecutedAt Timestamp the recurring payment was last executed
+     * @return True if the recurring payment can be cancelled
+     */
     function _canCancel(uint256 lastExecutedAt) private view returns (bool) {
         return block.timestamp >= BokkyPooBahsDateTimeLibrary.addMonths(lastExecutedAt, expirationInterval);
     }
 
+    /**
+     * @notice Gets recurring payment details for a user. Reverts if user has none.
+     * @param user User address to get details for.
+     * @return The recurring payment details.
+     */
     function _getRecurringPaymentOrRevert(address user) private view returns (RecurringPayment storage) {
         RecurringPayment storage recurringPayment = recurringPayments[user];
         if (recurringPayment.taskId == bytes32(0)) revert NoRecurringPaymentFound();
         return recurringPayment;
     }
 
+    /**
+     * @notice Gets payment type details for a payment type name. Reverts if it doesn't exist.
+     * @param name Payment type name.
+     * @return The payment type details.
+     */
     function _getPaymentTypeOrRevert(string calldata name) private view returns (PaymentType storage) {
         PaymentType storage paymentType = paymentTypes[_buildPaymentTypeId(name)];
         if (paymentType.id == 0) revert PaymentTypeDoesNotExist(name);
         return paymentType;
     }
 
+    /**
+     * @notice Builds a payment type id based on it's name
+     * @dev The id is the keccak256 hash of the name
+     * @param name Name of the payment type
+     * @return Id of the payment type
+     */
     function _buildPaymentTypeId(string calldata name) private pure returns (uint256) {
         return uint256(keccak256(abi.encode(name)));
     }
