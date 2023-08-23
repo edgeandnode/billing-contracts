@@ -35,7 +35,7 @@ contract GelatoManager is AutomateTaskCreator, Governed {
      * @param recepient Recepient receiving the funds
      * @param amount Amount being withdrawn
      */
-    event TrasuryFundsWithdrawn(address indexed recepient, uint256 amount);
+    event TreasuryFundsWithdrawn(address indexed recepient, uint256 amount);
 
     /**
      * @dev Emitted when a resolver task is created in Gelato Network
@@ -53,6 +53,9 @@ contract GelatoManager is AutomateTaskCreator, Governed {
 
     /// @dev Thrown when attempting to deposit zero amount into the Gelato treasury
     error InvalidDepositAmount();
+
+    /// @dev Thrown when attempting to set the maximum gas price to zero
+    error GasPriceCannotBeZero();
 
     /**
      * @dev Thrown when attempting to execute a task with a gas price above the accepted threshold
@@ -81,7 +84,6 @@ contract GelatoManager is AutomateTaskCreator, Governed {
     function deposit() external payable {
         if (msg.value == 0) revert InvalidDepositAmount();
         taskTreasury.depositFunds{ value: msg.value }(address(this), ETH, msg.value);
-
         emit TreasuryFundsDeposited(msg.sender, msg.value);
     }
 
@@ -92,7 +94,7 @@ contract GelatoManager is AutomateTaskCreator, Governed {
      */
     function withdraw(address recepient, uint256 amount) external onlyGovernor {
         taskTreasury.withdrawFunds(payable(recepient), ETH, amount);
-        emit TrasuryFundsWithdrawn(recepient, amount);
+        emit TreasuryFundsWithdrawn(recepient, amount);
     }
 
     /**
@@ -100,6 +102,7 @@ contract GelatoManager is AutomateTaskCreator, Governed {
      * @param newGasPrice The updated value for `maxGasPrice`
      */
     function setMaxGasPrice(uint256 newGasPrice) external onlyGovernor {
+        if (newGasPrice == 0) revert GasPriceCannotBeZero();
         maxGasPrice = newGasPrice;
         emit MaxGasPriceSet(maxGasPrice);
     }

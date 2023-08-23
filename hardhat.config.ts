@@ -103,6 +103,10 @@ const config = {
       accounts: {
         mnemonic: 'myth like bonus scare over problem client lizard pioneer submit female collect',
       },
+      forking: {
+        enabled: !!process.env.FORK,
+        url: `https://arb-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_KEY}`,
+      },
     },
     ganache: {
       chainId: 1337,
