@@ -9,6 +9,7 @@ import { IPayment } from "./interfaces/IPayment.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { GelatoManager } from "./GelatoManager.sol";
+import { Rescuable } from "./Rescuable.sol";
 import { BokkyPooBahsDateTimeLibrary } from "./libs/BokkyPooBahsDateTimeLibrary.sol";
 
 /**
@@ -17,7 +18,7 @@ import { BokkyPooBahsDateTimeLibrary } from "./libs/BokkyPooBahsDateTimeLibrary.
  * A recurring payment is an automated task running on a set interval that pulls funds
  * from a user and deposits them into their associated account on a target payment system.
  */
-contract RecurringPayments is IRecurringPayments, GelatoManager {
+contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
     using SafeERC20 for IERC20;
 
     // -- State --
@@ -305,6 +306,16 @@ contract RecurringPayments is IRecurringPayments, GelatoManager {
      */
     function setExpirationInterval(uint128 _expirationInterval) external onlyGovernor {
         _setExpirationInterval(_expirationInterval);
+    }
+
+    /**
+     * @notice Rescue any ERC20 tokens sent to this contract by accident
+     * @param _to  Destination address to send the tokens
+     * @param _token  Token address of the token that was accidentally sent to the contract
+     * @param _amount  Amount of tokens to pull
+     */
+    function rescueTokens(address _to, address _token, uint256 _amount) external onlyGovernor {
+        _rescueTokens(_to, _token, _amount);
     }
 
     /**

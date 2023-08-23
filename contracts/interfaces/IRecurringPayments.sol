@@ -104,6 +104,14 @@ interface IRecurringPayments {
     function setExpirationInterval(uint128 _expirationInterval) external;
 
     /**
+     * @notice Rescue any ERC20 tokens sent to this contract by accident
+     * @param _to  Destination address to send the tokens
+     * @param _token  Token address of the token that was accidentally sent to the contract
+     * @param _amount  Amount of tokens to pull
+     */
+    function rescueTokens(address _to, address _token, uint256 _amount) external;
+
+    /**
      * @notice Checks if a recurring payment can be executed.
      * @dev Meant to be called by the Gelato Runners to know when/how to execute a recurring payment.
      * @param user The user for which to check the recurring payment.
