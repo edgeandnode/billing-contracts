@@ -5,6 +5,7 @@ pragma solidity ^0.8.16;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { IBilling } from "./interfaces/IBilling.sol";
+import { IPayment } from "./interfaces/IPayment.sol";
 import { Governed } from "./Governed.sol";
 import { Rescuable } from "./Rescuable.sol";
 import { AddressAliasHelper } from "./arbitrum/AddressAliasHelper.sol";
@@ -14,7 +15,7 @@ import { AddressAliasHelper } from "./arbitrum/AddressAliasHelper.sol";
  * @dev The billing contract allows for Graph Tokens to be added by a user. The token can then
  * be pulled by a permissioned set of users named 'collectors'. It is owned and controlled by the 'governor'.
  */
-contract Billing is IBilling, Governed, Rescuable {
+contract Billing is IBilling, IPayment, Governed, Rescuable {
     // -- State --
 
     // The contract for interacting with The Graph Token
@@ -156,6 +157,29 @@ contract Billing is IBilling, Governed, Rescuable {
      */
     function addTo(address _to, uint256 _amount) external override {
         _pullAndAdd(msg.sender, _to, _amount);
+    }
+
+    /**
+     * @notice Creates a user account, using `amount` as the initial balance
+     * @dev This is defined in IPayment interface and used for compatibility with recurring payments contract
+     * @dev Creating an account in this contract is just adding tokens to the user's balance
+     * @dev Ensure graphToken.approve() is called on the billing contract first
+     * @param user Address of the user account
+     * @param amount Amount to use as the initial balance
+     */
+    function create(address user, uint256 amount) external override {
+        _pullAndAdd(msg.sender, user, amount);
+    }
+
+    /**
+     * @notice Tops up a user account with the specified `amount`.
+     * @dev This is defined in IPayment interface and used for compatibility with recurring payments contract
+     * @dev Ensure graphToken.approve() is called on the billing contract first
+     * @param user Address of the user account
+     * @param amount Amount to top up
+     */
+    function topUp(address user, uint256 amount) external override {
+        _pullAndAdd(msg.sender, user, amount);
     }
 
     /**

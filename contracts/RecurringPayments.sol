@@ -186,7 +186,7 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
         recurringPayments[user] = RecurringPayment(id, initialAmount, recurringAmount, block.timestamp, 0, paymentType);
 
         // Create account in target payment contract
-        if (initialAmount > 0) IPayment(paymentType.contractAddress).createAccount(user, initialAmount);
+        if (initialAmount > 0) IPayment(paymentType.contractAddress).create(user, initialAmount);
 
         emit RecurringPaymentCreated(
             user,
@@ -228,7 +228,7 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
         PaymentType memory paymentType = recurringPayment.paymentType;
 
         // Cancel the recurring payment if it has failed for long enough
-        if (_canCancel(recurringPayment.lastExecutedAt)) _cancel(user, true);
+        if (_canCancel(recurringPayment.createdAt, recurringPayment.lastExecutedAt)) _cancel(user, true);
 
         // Prevent early execution by third parties
         if (!_canExecute(recurringPayment.lastExecutedAt))
@@ -238,7 +238,7 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
 
         // Draw funds from the user wallet and immediately use them to top up their account
         paymentType.tokenAddress.safeTransferFrom(user, address(this), recurringPayment.recurringAmount);
-        paymentType.contractAddress.topUpAccount(user, recurringPayment.recurringAmount);
+        paymentType.contractAddress.topUp(user, recurringPayment.recurringAmount);
 
         emit RecurringPaymentExecuted(user, recurringPayment.taskId);
     }
@@ -401,7 +401,7 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
      */
     function _setExpirationInterval(uint128 _expirationInterval) private {
         if (_expirationInterval == 0 || _expirationInterval <= executionInterval) revert InvalidIntervalValue();
-        executionInterval = _expirationInterval;
+        expirationInterval = _expirationInterval;
         emit ExpirationIntervalSet(_expirationInterval);
     }
 
@@ -415,12 +415,13 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
     }
 
     /**
-     * @notice Checks wether a recurring payment can be cancelled based on it's last execution
+     * @notice Checks wether a recurring payment can be cancelled based on it's last execution or creation date
      * @param lastExecutedAt Timestamp the recurring payment was last executed
      * @return True if the recurring payment can be cancelled
      */
-    function _canCancel(uint256 lastExecutedAt) private view returns (bool) {
-        return block.timestamp >= BokkyPooBahsDateTimeLibrary.addMonths(lastExecutedAt, expirationInterval);
+    function _canCancel(uint256 createdAt, uint256 lastExecutedAt) private view returns (bool) {
+        uint256 lastExecutedOrCreatedAt = lastExecutedAt == 0 ? createdAt : lastExecutedAt;
+        return block.timestamp >= BokkyPooBahsDateTimeLibrary.addMonths(lastExecutedOrCreatedAt, expirationInterval);
     }
 
     /**

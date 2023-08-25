@@ -53,7 +53,11 @@ describe('RecurringPayments: Gelato Manager', () => {
   })
 
   describe('constructor', function () {
-    it('should set automate contract address', async function () {
+    it('should set gelato funds owner', async function () {
+      expect(await recurringPayments.fundsOwner()).to.eq(governor.address)
+    })
+
+    it('should set gelato automate contract address', async function () {
       expect(await recurringPayments.automate()).to.eq(automate.address)
     })
 
