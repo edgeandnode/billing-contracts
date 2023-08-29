@@ -1,7 +1,7 @@
 import { expect } from 'chai'
-import { it } from 'mocha'
 import hre from 'hardhat'
 import '@nomicfoundation/hardhat-chai-matchers'
+import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { setBalance } from '@nomicfoundation/hardhat-network-helpers'
 import { Contract } from 'ethers'
 
@@ -10,8 +10,8 @@ import * as deployment from '../../utils/deploy'
 import { getAccounts, Account, toGRT } from '../../utils/helpers'
 import { getPaymentTypeId } from '../../utils/recurring'
 
-import { Billing } from '../../build/types'
 import { RecurringPayments } from '../../build/types/contracts/RecurringPayments'
+import { Billing, PaymentMock, SimplePaymentMock } from '../../build/types'
 
 const { ethers } = hre
 
@@ -25,8 +25,12 @@ describe('RecurringPayments: Contract', () => {
 
   let token: Contract
   let automate: Contract
-  let recurringPayments: RecurringPayments
+
   let billing: Billing
+  let simplePayment: SimplePaymentMock
+  let payment: PaymentMock
+
+  let recurringPayments: RecurringPayments
 
   const tenBillion = toGRT('10000000000')
   const oneHundred = toGRT('100')
@@ -57,6 +61,8 @@ describe('RecurringPayments: Contract', () => {
     )
 
     // Deploy payment contracts
+    payment = await deployment.deployPaymentMock([token.address], me.signer, true)
+    simplePayment = await deployment.deploySimplePaymentMock([], me.signer, true)
     billing = await deployment.deployBilling(
       [collector.address, token.address, governor.address, l2TokenGatewayMock.address],
       me.signer,
@@ -96,7 +102,7 @@ describe('RecurringPayments: Contract', () => {
 
   describe('getters', function () {
     it('should return the payment type id', async function () {
-      const paymentTypeName = 'Billing1.0'
+      const paymentTypeName = 'AGreatPaymentTypeName'
       const paymentTypeId = getPaymentTypeId(paymentTypeName)
 
       expect(await recurringPayments.getPaymentTypeId(paymentTypeName)).to.eq(paymentTypeId)
@@ -115,12 +121,12 @@ describe('RecurringPayments: Contract', () => {
     it('should prevent registering payment types if token address is not a contract', async function () {
       const tx = recurringPayments
         .connect(governor.signer)
-        .registerPaymentType('Billing1.0', billing.address, me.address)
+        .registerPaymentType('Billing1.0', payment.address, me.address)
       await expect(tx).to.be.revertedWithCustomError(recurringPayments, 'AddressNotAContract')
     })
 
     it('should prevent unauthorized parties to register a payment type', async function () {
-      const tx = recurringPayments.connect(me.signer).registerPaymentType('Billing1.0', billing.address, token.address)
+      const tx = recurringPayments.connect(me.signer).registerPaymentType('Billing1.0', payment.address, token.address)
       await expect(tx).to.be.revertedWith('Only Governor can call')
     })
 
@@ -130,20 +136,20 @@ describe('RecurringPayments: Contract', () => {
 
       const tx = recurringPayments
         .connect(governor.signer)
-        .registerPaymentType(paymentTypeName, billing.address, token.address)
+        .registerPaymentType(paymentTypeName, payment.address, token.address)
       await expect(tx)
         .to.emit(recurringPayments, 'PaymentTypeRegistered')
-        .withArgs(paymentTypeId, paymentTypeName, billing.address, token.address)
+        .withArgs(paymentTypeId, paymentTypeName, payment.address, token.address)
 
       // Check RP contract state
       const paymentType = await recurringPayments.paymentTypes(paymentTypeId)
       expect(paymentType.id).to.equal(paymentTypeId)
       expect(paymentType.name).to.equal(paymentTypeName)
-      expect(paymentType.contractAddress).to.equal(billing.address)
+      expect(paymentType.contractAddress).to.equal(payment.address)
       expect(paymentType.tokenAddress).to.equal(token.address)
 
       // Check RP contract allowance
-      const rpAllowance = await token.allowance(recurringPayments.address, billing.address)
+      const rpAllowance = await token.allowance(recurringPayments.address, payment.address)
       expect(rpAllowance).to.equal(ethers.constants.MaxUint256)
     })
 
@@ -153,14 +159,14 @@ describe('RecurringPayments: Contract', () => {
 
       const tx = recurringPayments
         .connect(governor.signer)
-        .registerPaymentType(paymentTypeName, billing.address, token.address)
+        .registerPaymentType(paymentTypeName, payment.address, token.address)
       await expect(tx)
         .to.emit(recurringPayments, 'PaymentTypeRegistered')
-        .withArgs(paymentTypeId, paymentTypeName, billing.address, token.address)
+        .withArgs(paymentTypeId, paymentTypeName, payment.address, token.address)
 
       const tx2 = recurringPayments
         .connect(governor.signer)
-        .registerPaymentType(paymentTypeName, billing.address, token.address)
+        .registerPaymentType(paymentTypeName, payment.address, token.address)
       await expect(tx2).to.be.revertedWithCustomError(recurringPayments, 'PaymentTypeAlreadyRegistered')
     })
 
@@ -181,7 +187,7 @@ describe('RecurringPayments: Contract', () => {
       // Register
       await recurringPayments
         .connect(governor.signer)
-        .registerPaymentType(paymentTypeName, billing.address, token.address)
+        .registerPaymentType(paymentTypeName, payment.address, token.address)
 
       // Unregister
       const tx = recurringPayments.connect(governor.signer).unregisterPaymentType(paymentTypeName)
@@ -195,13 +201,75 @@ describe('RecurringPayments: Contract', () => {
       expect(paymentType.tokenAddress).to.equal(ethers.constants.AddressZero)
 
       // Check RP allowance
-      const rpAllowance = await token.allowance(recurringPayments.address, billing.address)
+      const rpAllowance = await token.allowance(recurringPayments.address, payment.address)
       expect(rpAllowance).to.equal(0)
     })
   })
 
   describe('recurring payments', function () {
-    it.skip('should test create flows')
+    const paymentTypeName = 'Billing1.0'
+
+    beforeEach(async function () {
+      await recurringPayments
+        .connect(governor.signer)
+        .registerPaymentType(paymentTypeName, payment.address, token.address)
+    })
+
+    it('should revert if recurring amount is zero', async function () {
+      const tx = recurringPayments.connect(user1.signer).create(paymentTypeName, toGRT(0), toGRT(0))
+      await expect(tx).to.be.revertedWithCustomError(recurringPayments, 'InvalidZeroAmount')
+    })
+
+    it('should revert if payment type does not exist', async function () {
+      const tx = recurringPayments.connect(user1.signer).create('Billing100.0', toGRT(0), toGRT(100))
+      await expect(tx).to.be.revertedWithCustomError(recurringPayments, 'PaymentTypeDoesNotExist')
+    })
+
+    it.skip('should revert if user already has a recurring payment')
+
+    it('should create a recurring payment with no initial amount', async function () {
+      const paymentType = await recurringPayments.paymentTypes(getPaymentTypeId(paymentTypeName))
+      const initialAmount = toGRT(0)
+      const recurringAmount = toGRT(100)
+
+      // Before state
+      const beforeUserBalance = await token.balanceOf(user1.address)
+
+      const tx = recurringPayments.connect(user1.signer).create(paymentTypeName, initialAmount, recurringAmount)
+
+      await expect(tx)
+        .to.emit(recurringPayments, 'RecurringPaymentCreated')
+        .withArgs(
+          user1.address,
+          anyValue,
+          paymentType.id,
+          paymentType.name,
+          paymentType.contractAddress,
+          paymentType.tokenAddress,
+          initialAmount,
+          recurringAmount,
+        )
+
+      const receipt = await (await tx).wait()
+      const receiptTimestamp = (await ethers.provider.getBlock(receipt.blockNumber)).timestamp
+
+      // RP contract state
+      const recurringPayment = await recurringPayments.recurringPayments(user1.address)
+      expect(recurringPayment.taskId).to.equal(anyValue)
+      expect(recurringPayment.initialAmount).to.equal(initialAmount)
+      expect(recurringPayment.recurringAmount).to.equal(recurringAmount)
+      expect(recurringPayment.createdAt).to.equal(receiptTimestamp)
+      expect(recurringPayment.lastExecutedAt).to.equal(0)
+      expect(recurringPayment.paymentType.id).to.equal(paymentType.id)
+      expect(recurringPayment.paymentType.name).to.equal(paymentType.name)
+      expect(recurringPayment.paymentType.contractAddress).to.equal(paymentType.contractAddress)
+      expect(recurringPayment.paymentType.tokenAddress).to.equal(paymentType.tokenAddress)
+
+      // After state
+      const afterUserBalance = await token.balanceOf(user1.address)
+      expect(afterUserBalance).to.eq(beforeUserBalance)
+    })
+
     it.skip('should test cancel flows')
     it.skip('should test execute flows')
     it.skip('should test check flows')
@@ -215,7 +283,7 @@ describe('RecurringPayments: Contract', () => {
   //     await recurringPayments.connect(me.signer).create('Billing1.0', toGRT(0), toGRT(100))
   //     console.log('---------------------------------------------------')
   //     console.log(await billing.userBalances(me.address))
-  //     console.log(await recurringPayments.connect(me.signer).recurringPayments(me.address))
+  //     console.log(await recurringPay/ments.connect(me.signer).recurringPayments(me.address))
 
   //     await token.connect(me.signer).approve(recurringPayments.address, toGRT(100))
   //     const tx = await recurringPayments.connect(me.signer).execute(me.address)
