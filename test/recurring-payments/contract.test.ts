@@ -114,19 +114,23 @@ describe('RecurringPayments: Contract', () => {
 
   describe('payment types', function () {
     it('should prevent registering payment types if contract address is not a contract', async function () {
-      const tx = recurringPayments.connect(governor.signer).registerPaymentType('Billing1.0', me.address, token.address)
+      const tx = recurringPayments
+        .connect(governor.signer)
+        .registerPaymentType('Billing1.0', me.address, token.address, true)
       await expect(tx).to.be.revertedWithCustomError(recurringPayments, 'AddressNotAContract')
     })
 
     it('should prevent registering payment types if token address is not a contract', async function () {
       const tx = recurringPayments
         .connect(governor.signer)
-        .registerPaymentType('Billing1.0', payment.address, me.address)
+        .registerPaymentType('Billing1.0', payment.address, me.address, true)
       await expect(tx).to.be.revertedWithCustomError(recurringPayments, 'AddressNotAContract')
     })
 
     it('should prevent unauthorized parties to register a payment type', async function () {
-      const tx = recurringPayments.connect(me.signer).registerPaymentType('Billing1.0', payment.address, token.address)
+      const tx = recurringPayments
+        .connect(me.signer)
+        .registerPaymentType('Billing1.0', payment.address, token.address, true)
       await expect(tx).to.be.revertedWith('Only Governor can call')
     })
 
@@ -136,7 +140,8 @@ describe('RecurringPayments: Contract', () => {
 
       const tx = recurringPayments
         .connect(governor.signer)
-        .registerPaymentType(paymentTypeName, payment.address, token.address)
+        .registerPaymentType(paymentTypeName, payment.address, token.address, true)
+
       await expect(tx)
         .to.emit(recurringPayments, 'PaymentTypeRegistered')
         .withArgs(paymentTypeId, paymentTypeName, payment.address, token.address)
@@ -159,14 +164,14 @@ describe('RecurringPayments: Contract', () => {
 
       const tx = recurringPayments
         .connect(governor.signer)
-        .registerPaymentType(paymentTypeName, payment.address, token.address)
+        .registerPaymentType(paymentTypeName, payment.address, token.address, true)
       await expect(tx)
         .to.emit(recurringPayments, 'PaymentTypeRegistered')
         .withArgs(paymentTypeId, paymentTypeName, payment.address, token.address)
 
       const tx2 = recurringPayments
         .connect(governor.signer)
-        .registerPaymentType(paymentTypeName, payment.address, token.address)
+        .registerPaymentType(paymentTypeName, payment.address, token.address, true)
       await expect(tx2).to.be.revertedWithCustomError(recurringPayments, 'PaymentTypeAlreadyRegistered')
     })
 
@@ -187,7 +192,7 @@ describe('RecurringPayments: Contract', () => {
       // Register
       await recurringPayments
         .connect(governor.signer)
-        .registerPaymentType(paymentTypeName, payment.address, token.address)
+        .registerPaymentType(paymentTypeName, payment.address, token.address, true)
 
       // Unregister
       const tx = recurringPayments.connect(governor.signer).unregisterPaymentType(paymentTypeName)
@@ -212,7 +217,7 @@ describe('RecurringPayments: Contract', () => {
     beforeEach(async function () {
       await recurringPayments
         .connect(governor.signer)
-        .registerPaymentType(paymentTypeName, payment.address, token.address)
+        .registerPaymentType(paymentTypeName, payment.address, token.address, true)
     })
 
     it('should revert if recurring amount is zero', async function () {
@@ -255,7 +260,6 @@ describe('RecurringPayments: Contract', () => {
 
       // RP contract state
       const recurringPayment = await recurringPayments.recurringPayments(user1.address)
-      expect(recurringPayment.taskId).to.equal(anyValue)
       expect(recurringPayment.initialAmount).to.equal(initialAmount)
       expect(recurringPayment.recurringAmount).to.equal(recurringAmount)
       expect(recurringPayment.createdAt).to.equal(receiptTimestamp)

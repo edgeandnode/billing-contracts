@@ -20,7 +20,7 @@ contract PaymentMock is IPayment {
         token.transferFrom(msg.sender, address(this), amount);
     }
 
-    function topUp(address user, uint256 amount) external override {
+    function addTo(address user, uint256 amount) external override {
         balances[user] += amount;
         token.transferFrom(msg.sender, address(this), amount);
     }
@@ -33,7 +33,7 @@ contract PaymentMock is IPayment {
 contract SimplePaymentMock {
     mapping(address user => uint256) public balances;
 
-    function topUp(address user, uint256 amount) external {
+    function addTo(address user, uint256 amount) external {
         balances[user] += amount;
     }
 }

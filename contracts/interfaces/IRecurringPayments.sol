@@ -19,11 +19,14 @@ interface IRecurringPayments {
      * add funds, etc. Each payment system defines it's own ERC20 token in which payments are made.
      * @dev Payment system target contract must implement by the IPayment interface.
      * @dev `id` is the keccak256 hash of the `name`.
+     * @dev Some payment systems might require an account to be created before being able to top up,
+     * the `requiresAccountCreation` flag indicates whether this is the case.
      */
     struct PaymentType {
         uint256 id;
         IPayment contractAddress;
         IERC20 tokenAddress;
+        bool requiresAccountCreation;
         string name;
     }
 
@@ -57,7 +60,7 @@ interface IRecurringPayments {
 
     /**
      * @notice Execute a recurring payment for `user`.
-     * Pulls funds from the user's address and deposits them into their account by calling the "topUp"
+     * Pulls funds from the user's address and deposits them into their account by calling the "addTo"
      * function on the payment system contract.
      * Can only be called after an amount of time defined by `executionInterval` has passed since the last execution.
      * Note that the contract must have sufficient allowance to execute the payment. An insufficient allowance
@@ -77,8 +80,14 @@ interface IRecurringPayments {
      * @param name The name of the payment type. Must be unique.
      * @param contractAddress Address of the payment system contract.
      * @param tokenAddress Address of the payment system token contract.
+     * @param requiresAccountCreation Whether the payment system requires an account to be created or setup before being topped up.
      */
-    function registerPaymentType(string calldata name, address contractAddress, address tokenAddress) external;
+    function registerPaymentType(
+        string calldata name,
+        address contractAddress,
+        address tokenAddress,
+        bool requiresAccountCreation
+    ) external;
 
     /**
      * @notice Unregisters a payment type.

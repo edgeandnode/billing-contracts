@@ -167,7 +167,7 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
     function create(string calldata paymentTypeName, uint256 initialAmount, uint256 recurringAmount) external {
         if (recurringAmount == 0) revert InvalidZeroAmount();
 
-        PaymentType storage paymentType = _getPaymentTypeOrRevert(paymentTypeName);
+        PaymentType memory paymentType = _getPaymentTypeOrRevert(paymentTypeName);
 
         // Make sure we only have one recurring payment per user
         address user = msg.sender;
@@ -185,8 +185,14 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
         // Save recurring payment
         recurringPayments[user] = RecurringPayment(id, initialAmount, recurringAmount, block.timestamp, 0, paymentType);
 
-        // Create account in target payment contract
-        if (initialAmount > 0) IPayment(paymentType.contractAddress).create(user, initialAmount);
+        // Handle initial deposit - creates account if payment type requires it
+        if (initialAmount > 0) {
+            if (paymentType.requiresAccountCreation) {
+                IPayment(paymentType.contractAddress).create(user, initialAmount);
+            } else {
+                IPayment(paymentType.contractAddress).addTo(user, initialAmount);
+            }
+        }
 
         emit RecurringPaymentCreated(
             user,
@@ -211,7 +217,7 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
 
     /**
      * @notice Execute a recurring payment for `user`.
-     * Pulls funds from the user's address and deposits them into their account by calling the "topUp"
+     * Pulls funds from the user's address and deposits them into their account by calling the "addTo"
      * function on the payment system contract.
      * Can only be called after an amount of time defined by `executionInterval` has passed since the last execution.
      * Note that the contract must have sufficient allowance to execute the payment. An insufficient allowance
@@ -238,7 +244,7 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
 
         // Draw funds from the user wallet and immediately use them to top up their account
         paymentType.tokenAddress.safeTransferFrom(user, address(this), recurringPayment.recurringAmount);
-        paymentType.contractAddress.topUp(user, recurringPayment.recurringAmount);
+        paymentType.contractAddress.addTo(user, recurringPayment.recurringAmount);
 
         emit RecurringPaymentExecuted(user, recurringPayment.taskId);
     }
@@ -251,11 +257,13 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
      * @param name The name of the payment type. Must be unique.
      * @param contractAddress Address of the payment system contract.
      * @param tokenAddress Address of the payment system token contract.
+     * @param requiresAccountCreation Whether the payment system requires an account to be created or setup before being topped up.
      */
     function registerPaymentType(
         string calldata name,
         address contractAddress,
-        address tokenAddress
+        address tokenAddress,
+        bool requiresAccountCreation
     ) external onlyGovernor {
         if (Address.isContract(contractAddress) == false || Address.isContract(tokenAddress) == false)
             revert AddressNotAContract();
@@ -266,7 +274,13 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
         PaymentType storage paymentType = paymentTypes[id];
         if (paymentType.id != 0) revert PaymentTypeAlreadyRegistered(id, name);
 
-        paymentTypes[id] = PaymentType(id, IPayment(contractAddress), IERC20(tokenAddress), name);
+        paymentTypes[id] = PaymentType(
+            id,
+            IPayment(contractAddress),
+            IERC20(tokenAddress),
+            requiresAccountCreation,
+            name
+        );
 
         // Grant target payment contract allowance to pull from the recurring payments contract
         IERC20(tokenAddress).approve(contractAddress, type(uint256).max);

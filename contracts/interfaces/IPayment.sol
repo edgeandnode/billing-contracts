@@ -29,5 +29,5 @@ interface IPayment {
      * @param user Address of the user account
      * @param amount Amount to top up
      */
-    function topUp(address user, uint256 amount) external;
+    function addTo(address user, uint256 amount) external;
 }
