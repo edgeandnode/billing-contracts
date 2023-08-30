@@ -163,8 +163,14 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
      * @param paymentTypeName The name of the payment type to use. Must be a registered payment type.
      * @param initialAmount The initial amount to fund the user account.
      * @param recurringAmount The amount to pay at each interval. Must be greater than 0.
+     * @param createData Encoded parameters required to create the payment on the target payment system.
      */
-    function create(string calldata paymentTypeName, uint256 initialAmount, uint256 recurringAmount) external {
+    function create(
+        string calldata paymentTypeName,
+        uint256 initialAmount,
+        uint256 recurringAmount,
+        bytes calldata createData
+    ) external {
         if (recurringAmount == 0) revert InvalidZeroAmount();
 
         PaymentType memory paymentType = _getPaymentTypeOrRevert(paymentTypeName);
@@ -185,13 +191,15 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
         // Save recurring payment
         recurringPayments[user] = RecurringPayment(id, initialAmount, recurringAmount, block.timestamp, 0, paymentType);
 
-        // Handle initial deposit - creates account if payment type requires it
+        // Create account if payment type requires it
+        if (paymentType.requiresAccountCreation) {
+            IPayment(paymentType.contractAddress).create(user, createData);
+        }
+
+        // Add the initial amount to the user account
         if (initialAmount > 0) {
-            if (paymentType.requiresAccountCreation) {
-                IPayment(paymentType.contractAddress).create(user, initialAmount);
-            } else {
-                IPayment(paymentType.contractAddress).addTo(user, initialAmount);
-            }
+            paymentType.tokenAddress.safeTransferFrom(user, address(this), initialAmount);
+            IPayment(paymentType.contractAddress).addTo(user, initialAmount);
         }
 
         emit RecurringPaymentCreated(
@@ -257,7 +265,7 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
      * @param name The name of the payment type. Must be unique.
      * @param contractAddress Address of the payment system contract.
      * @param tokenAddress Address of the payment system token contract.
-     * @param requiresAccountCreation Whether the payment system requires an account to be created or setup before being topped up.
+     * @param requiresAccountCreation Whether the payment system requires an account to be created or setup before being used
      */
     function registerPaymentType(
         string calldata name,

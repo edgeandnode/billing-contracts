@@ -15,10 +15,7 @@ contract PaymentMock is IPayment {
         token = IERC20(_token);
     }
 
-    function create(address user, uint256 amount) external override {
-        balances[user] = amount;
-        token.transferFrom(msg.sender, address(this), amount);
-    }
+    function create(address user, bytes calldata data) external override {}
 
     function addTo(address user, uint256 amount) external override {
         balances[user] += amount;

@@ -13,13 +13,11 @@ pragma solidity ^0.8.18;
 interface IPayment {
     /**
      * @notice Creates a user account, using `amount` as the initial balance
-     * @dev The amount is denominated in the payment contract's ERC20 token.
-     * @dev Ensure IERC20.approve() is called on the payment contract first as funds are expected
-     * to be drawn via `transferFrom`.
+     * @dev If the payment contract requires it, ensure IERC20.approve() is called
      * @param user Address of the user account
-     * @param amount Amount to use as the initial balance
+     * @param createData Encoded parameters required to create the payment on the target payment system.
      */
-    function create(address user, uint256 amount) external;
+    function create(address user, bytes calldata createData) external;
 
     /**
      * @notice Tops up a user account with the specified `amount`.

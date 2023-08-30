@@ -48,8 +48,14 @@ interface IRecurringPayments {
      * @param paymentTypeName The name of the payment type to use. Must be a registered payment type.
      * @param initialAmount The initial amount to fund the user account.
      * @param recurringAmount The amount to pay at each interval. Must be greater than 0.
+     * @param createData Encoded parameters required to create the payment on the target payment system.
      */
-    function create(string calldata paymentTypeName, uint256 initialAmount, uint256 recurringAmount) external;
+    function create(
+        string calldata paymentTypeName,
+        uint256 initialAmount,
+        uint256 recurringAmount,
+        bytes calldata createData
+    ) external;
 
     /**
      * @notice Cancel a recurring payment for the calling user.
