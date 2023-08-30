@@ -244,7 +244,10 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
         // If user is calling we allow early execution and don't automatically cancel even if expiration time has passed
         if (user != msg.sender) {
             // Cancel the recurring payment if it has failed for long enough
-            if (_canCancel(recurringPayment.createdAt, recurringPayment.lastExecutedAt)) _cancel(user, true);
+            if (_canCancel(recurringPayment.createdAt, recurringPayment.lastExecutedAt)) {
+                _cancel(user, true);
+                return;
+            }
 
             // Prevent early execution by third parties
             if (!_canExecute(recurringPayment.lastExecutedAt))
