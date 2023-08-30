@@ -33,4 +33,8 @@ contract AutomateMock {
         task = keccak256(abi.encode(_execAddress, _execDataOrSelector, _moduleData, _feeToken));
         return task;
     }
+
+    function cancelTask(bytes32 _taskId) external pure returns (bool) {
+        return true;
+    }
 }

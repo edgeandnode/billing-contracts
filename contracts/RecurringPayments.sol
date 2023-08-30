@@ -241,12 +241,15 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
         RecurringPayment storage recurringPayment = _getRecurringPaymentOrRevert(user);
         PaymentType memory paymentType = recurringPayment.paymentType;
 
-        // Cancel the recurring payment if it has failed for long enough
-        if (_canCancel(recurringPayment.createdAt, recurringPayment.lastExecutedAt)) _cancel(user, true);
+        // If user is calling we allow early execution and don't automatically cancel even if expiration time has passed
+        if (user != msg.sender) {
+            // Cancel the recurring payment if it has failed for long enough
+            if (_canCancel(recurringPayment.createdAt, recurringPayment.lastExecutedAt)) _cancel(user, true);
 
-        // Prevent early execution by third parties
-        if (!_canExecute(recurringPayment.lastExecutedAt))
-            revert RecurringPaymentInCooldown(recurringPayment.lastExecutedAt);
+            // Prevent early execution by third parties
+            if (!_canExecute(recurringPayment.lastExecutedAt))
+                revert RecurringPaymentInCooldown(recurringPayment.lastExecutedAt);
+        }
 
         recurringPayment.lastExecutedAt = block.timestamp;
 
