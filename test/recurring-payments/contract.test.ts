@@ -11,7 +11,7 @@ import { getPaymentTypeId } from '../../utils/recurring'
 
 import { RecurringPayments } from '../../build/types/contracts/RecurringPayments'
 import { PaymentMock } from '../../build/types'
-import { createRP } from './lib'
+import { createRP } from './helpers'
 
 const { ethers } = hre
 

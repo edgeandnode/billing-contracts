@@ -10,7 +10,7 @@ import { getAccounts, Account, toGRT } from '../../../utils/helpers'
 
 import { RecurringPayments } from '../../../build/types/contracts/RecurringPayments'
 import { Billing, PaymentMock } from '../../../build/types'
-import { buildCheckExecPayload, createRP, executeRP } from '../lib'
+import { buildCheckExecPayload, createRP, executeRP } from '../helpers'
 
 const { ethers } = hre
 
