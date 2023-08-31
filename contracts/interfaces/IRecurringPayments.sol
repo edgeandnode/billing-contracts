@@ -35,7 +35,6 @@ interface IRecurringPayments {
      */
     struct RecurringPayment {
         bytes32 taskId;
-        uint256 initialAmount;
         uint256 recurringAmount;
         uint256 createdAt;
         uint256 lastExecutedAt;
@@ -48,12 +47,14 @@ interface IRecurringPayments {
      * @param paymentTypeName The name of the payment type to use. Must be a registered payment type.
      * @param initialAmount The initial amount to fund the user account.
      * @param recurringAmount The amount to pay at each interval. Must be greater than 0.
+     * @param createAmount Total amount to send to the payment system contract to create the user account.
      * @param createData Encoded parameters required to create the payment on the target payment system.
      */
     function create(
         string calldata paymentTypeName,
         uint256 initialAmount,
         uint256 recurringAmount,
+        uint256 createAmount,
         bytes calldata createData
     ) external;
 

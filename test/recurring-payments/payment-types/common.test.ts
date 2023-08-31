@@ -2,15 +2,15 @@ import { expect } from 'chai'
 import hre from 'hardhat'
 import '@nomicfoundation/hardhat-chai-matchers'
 import { setBalance, time } from '@nomicfoundation/hardhat-network-helpers'
-import { Contract } from 'ethers'
+import { BigNumber, Contract } from 'ethers'
 
 import { deployMockGelatoNetwork } from '../../../utils/gelato'
 import * as deployment from '../../../utils/deploy'
 import { getAccounts, Account, toGRT } from '../../../utils/helpers'
 
 import { RecurringPayments } from '../../../build/types/contracts/RecurringPayments'
-import { Billing, PaymentMock } from '../../../build/types'
-import { buildCheckExecPayload, createRP, executeRP } from '../helpers'
+import { Billing, PaymentMock, Subscriptions } from '../../../build/types'
+import { buildCheckExecPayload, createRP, executeRP, latestBlockTimestamp } from '../helpers'
 
 const { ethers } = hre
 
@@ -26,9 +26,11 @@ describe('RecurringPayments: payment types', () => {
   let automate: Contract
   let payment: PaymentMock
   let billing: Billing
+  let subscriptions: Subscriptions
   let recurringPayments: RecurringPayments
 
   let createData: string
+  let subsData: string
   const emptyData = ethers.utils.defaultAbiCoder.encode([], [])
 
   const zero = toGRT('0')
@@ -41,6 +43,7 @@ describe('RecurringPayments: payment types', () => {
   const initialExecutionInterval = 2
   const initialExpirationInterval = 13
   const tooDamnHighGasPrice = ethers.utils.parseUnits('100', 'gwei')
+  const subscriptionsEpochSeconds = BigNumber.from(100)
 
   const testPaymentTypes = [
     {
@@ -48,12 +51,22 @@ describe('RecurringPayments: payment types', () => {
       contractAddress: '',
       requiresCreate: true,
       createData: createData,
+      createAmount: toGRT(0),
     },
     {
       name: 'Billing1.0',
       contractAddress: '',
       requiresCreate: false,
       createData: emptyData,
+      createAmount: toGRT(0),
+    },
+    {
+      name: 'Billing2.0',
+      contractAddress: '',
+      requiresCreate: true,
+      createData: subsData,
+      createApproval: BigNumber.from(5).mul(520),
+      createAmount: BigNumber.from(5).mul(520),
     },
   ]
 
@@ -62,6 +75,11 @@ describe('RecurringPayments: payment types', () => {
     ;[me, governor, gelatoNetwork, user1, collector1, l2TokenGatewayMock] = await getAccounts()
 
     createData = ethers.utils.defaultAbiCoder.encode(['address'], [user1.address])
+    const now = await latestBlockTimestamp()
+    const start = now.sub(10)
+    const end = now.add(510)
+    const rate = BigNumber.from(5)
+    subsData = ethers.utils.defaultAbiCoder.encode(['uint64', 'uint64', 'uint128'], [start, end, rate])
 
     token = await deployment.deployToken([tenBillion], me.signer, true)
 
@@ -83,6 +101,12 @@ describe('RecurringPayments: payment types', () => {
       true,
     )
 
+    subscriptions = await deployment.deploySubscriptions(
+      [token.address, subscriptionsEpochSeconds, recurringPayments.address],
+      me.signer,
+      true,
+    )
+
     // Airdrop
     await token.connect(me.signer).transfer(user1.address, oneMillion)
     await setBalance(me.address, oneHundred)
@@ -92,6 +116,8 @@ describe('RecurringPayments: payment types', () => {
     testPaymentTypes[0].createData = createData
     testPaymentTypes[0].contractAddress = payment.address
     testPaymentTypes[1].contractAddress = billing.address
+    testPaymentTypes[2].contractAddress = subscriptions.address
+    testPaymentTypes[2].createData = subsData
   })
 
   for (const testPaymentType of testPaymentTypes) {
@@ -109,12 +135,12 @@ describe('RecurringPayments: payment types', () => {
 
       describe('create()', function () {
         it('should revert if recurring amount is zero', async function () {
-          const tx = recurringPayments.connect(user1.signer).create(testPaymentType.name, zero, zero, emptyData)
+          const tx = recurringPayments.connect(user1.signer).create(testPaymentType.name, zero, zero, zero, emptyData)
           await expect(tx).to.be.revertedWithCustomError(recurringPayments, 'InvalidZeroAmount')
         })
 
         it('should revert if payment type does not exist', async function () {
-          const tx = recurringPayments.connect(user1.signer).create('Billing100.0', zero, oneHundred, emptyData)
+          const tx = recurringPayments.connect(user1.signer).create('Billing100.0', zero, oneHundred, zero, emptyData)
           await expect(tx).to.be.revertedWithCustomError(recurringPayments, 'PaymentTypeDoesNotExist')
         })
 
@@ -123,6 +149,10 @@ describe('RecurringPayments: payment types', () => {
           const recurringAmount = oneHundred
 
           // Create RP
+          await token
+            .connect(user1.signer)
+            .approve(recurringPayments.address, initialAmount.add(testPaymentType.createAmount))
+
           await createRP(
             user1,
             user1.address,
@@ -131,6 +161,7 @@ describe('RecurringPayments: payment types', () => {
             testPaymentType.name,
             initialAmount,
             recurringAmount,
+            testPaymentType.createAmount,
             testPaymentType.createData,
           )
         })
@@ -140,7 +171,9 @@ describe('RecurringPayments: payment types', () => {
           const recurringAmount = oneHundred
 
           // Create RP
-          await token.connect(user1.signer).approve(recurringPayments.address, initialAmount)
+          await token
+            .connect(user1.signer)
+            .approve(recurringPayments.address, initialAmount.add(testPaymentType.createAmount))
           await createRP(
             user1,
             user1.address,
@@ -149,6 +182,7 @@ describe('RecurringPayments: payment types', () => {
             testPaymentType.name,
             initialAmount,
             recurringAmount,
+            testPaymentType.createAmount,
             testPaymentType.createData,
           )
         })
@@ -157,6 +191,9 @@ describe('RecurringPayments: payment types', () => {
           const initialAmount = zero
           const recurringAmount = oneHundred
           // Create RP
+          await token
+            .connect(user1.signer)
+            .approve(recurringPayments.address, initialAmount.add(testPaymentType.createAmount))
           await createRP(
             user1,
             user1.address,
@@ -165,12 +202,19 @@ describe('RecurringPayments: payment types', () => {
             testPaymentType.name,
             initialAmount,
             recurringAmount,
+            testPaymentType.createAmount,
             testPaymentType.createData,
           )
 
           const tx = recurringPayments
             .connect(user1.signer)
-            .create(testPaymentType.name, initialAmount, recurringAmount, testPaymentType.createData)
+            .create(
+              testPaymentType.name,
+              initialAmount,
+              recurringAmount,
+              testPaymentType.createAmount,
+              testPaymentType.createData,
+            )
 
           await expect(tx).to.be.revertedWithCustomError(recurringPayments, 'RecurringPaymentAlreadyExists')
         })
@@ -183,15 +227,20 @@ describe('RecurringPayments: payment types', () => {
         })
 
         it('should allow a user to cancel their recurring payment', async function () {
+          const initialAmount = zero
           // Create RP
+          await token
+            .connect(user1.signer)
+            .approve(recurringPayments.address, initialAmount.add(testPaymentType.createAmount))
           await createRP(
             user1,
             user1.address,
             recurringPayments,
             token,
             testPaymentType.name,
-            zero,
+            initialAmount,
             oneHundred,
+            testPaymentType.createAmount,
             testPaymentType.createData,
           )
 
@@ -205,7 +254,6 @@ describe('RecurringPayments: payment types', () => {
 
           // Check RP contract state
           const afterRecurringPayment = await recurringPayments.recurringPayments(user1.address)
-          expect(afterRecurringPayment.initialAmount).to.equal(0)
           expect(afterRecurringPayment.recurringAmount).to.equal(0)
           expect(afterRecurringPayment.createdAt).to.equal(0)
           expect(afterRecurringPayment.lastExecutedAt).to.equal(0)
@@ -218,6 +266,7 @@ describe('RecurringPayments: payment types', () => {
 
       describe('execute()', function () {
         beforeEach(async function () {
+          await token.connect(user1.signer).approve(recurringPayments.address, zero.add(testPaymentType.createAmount))
           await createRP(
             user1,
             user1.address,
@@ -226,6 +275,7 @@ describe('RecurringPayments: payment types', () => {
             testPaymentType.name,
             zero,
             oneHundred,
+            testPaymentType.createAmount,
             testPaymentType.createData,
           )
           await token.connect(user1.signer).approve(recurringPayments.address, oneMillion)
@@ -291,6 +341,7 @@ describe('RecurringPayments: payment types', () => {
       })
       describe('check()', function () {
         beforeEach(async function () {
+          await token.connect(user1.signer).approve(recurringPayments.address, zero.add(testPaymentType.createAmount))
           await createRP(
             user1,
             user1.address,
@@ -299,6 +350,7 @@ describe('RecurringPayments: payment types', () => {
             testPaymentType.name,
             zero,
             oneHundred,
+            testPaymentType.createAmount,
             testPaymentType.createData,
           )
           await token.connect(user1.signer).approve(recurringPayments.address, oneMillion)

@@ -2,7 +2,7 @@ import { expect } from 'chai'
 import hre from 'hardhat'
 import '@nomicfoundation/hardhat-chai-matchers'
 import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
-import { BigNumberish, Contract } from 'ethers'
+import { BigNumber, BigNumberish, Contract } from 'ethers'
 
 import { getPaymentTypeId } from '../../utils/recurring'
 import { Account } from '../../utils/helpers'
@@ -18,6 +18,7 @@ export async function createRP(
   paymentTypeName: string,
   initialAmount: BigNumberish,
   recurringAmount: BigNumberish,
+  createAmount: BigNumberish,
   createData: string,
 ) {
   // Before token state
@@ -28,7 +29,7 @@ export async function createRP(
   const paymentType = await recurringPayments.paymentTypes(getPaymentTypeId(paymentTypeName))
   const tx = recurringPayments
     .connect(signer.signer)
-    .create(paymentTypeName, initialAmount, recurringAmount, createData)
+    .create(paymentTypeName, initialAmount, recurringAmount, createAmount, createData)
 
   await expect(tx)
     .to.emit(recurringPayments, 'RecurringPaymentCreated')
@@ -41,6 +42,8 @@ export async function createRP(
       paymentType.tokenAddress,
       initialAmount,
       recurringAmount,
+      createAmount,
+      createData,
     )
 
   const receipt = await (await tx).wait()
@@ -49,7 +52,6 @@ export async function createRP(
   // RP contract state
   const recurringPayment = await recurringPayments.recurringPayments(user)
 
-  expect(recurringPayment.initialAmount).to.equal(initialAmount)
   expect(recurringPayment.recurringAmount).to.equal(recurringAmount)
   expect(recurringPayment.createdAt).to.equal(receiptTimestamp)
   expect(recurringPayment.lastExecutedAt).to.equal(0)
@@ -62,7 +64,7 @@ export async function createRP(
   const afterUserBalance = await token.balanceOf(user)
   const afterRPBalance = await token.balanceOf(recurringPayments.address)
 
-  expect(afterUserBalance).to.eq(beforeUserBalance.sub(initialAmount))
+  expect(afterUserBalance).to.eq(beforeUserBalance.sub(initialAmount).sub(createAmount))
   expect(afterRPBalance).to.eq(beforeRPBalance)
 }
 
@@ -84,7 +86,6 @@ export async function executeRP(signer: Account, user: string, recurringPayments
   const afterUserBalance = await token.balanceOf(user)
   const afterRPBalance = await token.balanceOf(recurringPayments.address)
 
-  expect(afterRecurringPayment.initialAmount).to.equal(beforeRecurringPayment.initialAmount)
   expect(afterRecurringPayment.recurringAmount).to.equal(beforeRecurringPayment.recurringAmount)
   expect(afterRecurringPayment.createdAt).to.equal(beforeRecurringPayment.createdAt)
   expect(afterRecurringPayment.lastExecutedAt).to.equal(receiptTimestamp)
@@ -102,4 +103,9 @@ export function buildCheckExecPayload(address: string) {
     ['bytes', 'bytes'],
     [ethers.utils.id('execute(address)').substring(0, 10), ethers.utils.defaultAbiCoder.encode(['address'], [address])],
   )
+}
+
+export const latestBlockTimestamp = async () => {
+  const block = await hre.network.provider.send('eth_getBlockByNumber', ['latest', false])
+  return BigNumber.from(block.timestamp)
 }

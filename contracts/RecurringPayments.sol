@@ -68,7 +68,9 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
         address paymentContractAddress,
         address paymentTokenAddress,
         uint256 initialAmount,
-        uint256 recurringAmount
+        uint256 recurringAmount,
+        uint256 createAmount,
+        bytes createData
     );
 
     /**
@@ -163,12 +165,14 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
      * @param paymentTypeName The name of the payment type to use. Must be a registered payment type.
      * @param initialAmount The initial amount to fund the user account.
      * @param recurringAmount The amount to pay at each interval. Must be greater than 0.
+     * @param createAmount Total amount to send to the payment system contract to create the user account.
      * @param createData Encoded parameters required to create the payment on the target payment system.
      */
     function create(
         string calldata paymentTypeName,
         uint256 initialAmount,
         uint256 recurringAmount,
+        uint256 createAmount,
         bytes calldata createData
     ) external {
         if (recurringAmount == 0) revert InvalidZeroAmount();
@@ -189,10 +193,11 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
         );
 
         // Save recurring payment
-        recurringPayments[user] = RecurringPayment(id, initialAmount, recurringAmount, block.timestamp, 0, paymentType);
+        recurringPayments[user] = RecurringPayment(id, recurringAmount, block.timestamp, 0, paymentType);
 
         // Create account if payment type requires it
         if (paymentType.requiresAccountCreation) {
+            if (createAmount > 0) paymentType.tokenAddress.safeTransferFrom(user, address(this), createAmount);
             IPayment(paymentType.contractAddress).create(user, createData);
         }
 
@@ -210,7 +215,9 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
             address(paymentType.contractAddress),
             address(paymentType.tokenAddress),
             initialAmount,
-            recurringAmount
+            recurringAmount,
+            createAmount,
+            createData
         );
     }
 

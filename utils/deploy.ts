@@ -5,7 +5,14 @@ import { loadArtifact } from './artifacts'
 import { Billing } from '../build/types/contracts/Billing'
 import { BanxaWrapper } from '../build/types/contracts/BanxaWrapper'
 import { RecurringPayments } from '../build/types/contracts/RecurringPayments'
-import { AutomateMock, OpsProxyFactoryMock, PaymentMock, SimplePaymentMock, TaskTreasuryMock } from '../build/types'
+import {
+  AutomateMock,
+  OpsProxyFactoryMock,
+  PaymentMock,
+  SimplePaymentMock,
+  Subscriptions,
+  TaskTreasuryMock,
+} from '../build/types'
 
 const hash = (input: string): string => utils.keccak256(`0x${input.replace(/^0x/, '')}`)
 
@@ -150,4 +157,13 @@ export async function deployRecurringPayments(
   disableLogging?: boolean,
 ): Promise<RecurringPayments> {
   return deployContract(args, sender, 'RecurringPayments', disableLogging) as unknown as Promise<RecurringPayments>
+}
+
+// Pass the args in order to this func
+export async function deploySubscriptions(
+  args: Array<string | BigNumber | number>,
+  sender: Signer,
+  disableLogging?: boolean,
+): Promise<Subscriptions> {
+  return deployContract(args, sender, 'Subscriptions', disableLogging) as unknown as Promise<Subscriptions>
 }
