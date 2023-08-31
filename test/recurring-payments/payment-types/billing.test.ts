@@ -10,7 +10,7 @@ import { getAccounts, Account, toGRT } from '../../../utils/helpers'
 
 import { RecurringPayments } from '../../../build/types/contracts/RecurringPayments'
 import { Billing } from '../../../build/types'
-import { buildCheckExecPayload, createRP, executeRP } from '../helpers'
+import { createRP, executeRP } from '../helpers'
 
 const { ethers } = hre
 
@@ -27,7 +27,7 @@ describe('RecurringPayments: payment types', () => {
   let recurringPayments: RecurringPayments
   let billing: Billing
 
-  let createData: string
+  const createData = ethers.utils.defaultAbiCoder.encode([], [])
 
   const zero = toGRT('0')
   const ten = toGRT('10')
@@ -43,8 +43,6 @@ describe('RecurringPayments: payment types', () => {
   beforeEach(async function () {
     // eslint-disable-next-line @typescript-eslint/no-extra-semi
     ;[me, governor, gelatoNetwork, user1, collector1, l2TokenGatewayMock] = await getAccounts()
-
-    createData = ethers.utils.defaultAbiCoder.encode([], [])
 
     token = await deployment.deployToken([tenBillion], me.signer, true)
 
@@ -96,6 +94,7 @@ describe('RecurringPayments: payment types', () => {
           paymentTypeName,
           initialAmount,
           recurringAmount,
+          zero,
           createData,
         )
 
@@ -122,6 +121,7 @@ describe('RecurringPayments: payment types', () => {
           paymentTypeName,
           initialAmount,
           recurringAmount,
+          zero,
           createData,
         )
 
@@ -134,7 +134,17 @@ describe('RecurringPayments: payment types', () => {
 
     describe('execute()', function () {
       beforeEach(async function () {
-        await createRP(user1, user1.address, recurringPayments, token, paymentTypeName, zero, oneHundred, createData)
+        await createRP(
+          user1,
+          user1.address,
+          recurringPayments,
+          token,
+          paymentTypeName,
+          zero,
+          oneHundred,
+          zero,
+          createData,
+        )
         await token.connect(user1.signer).approve(recurringPayments.address, oneMillion)
       })
 

@@ -167,7 +167,7 @@ contract Subscriptions is Ownable {
         require(_amount >= subAmount, "Insufficient funds to create subscription");
 
         // Create the subscription using the pending subscription details
-        _subscribe(_to, pendingSub.start, pendingSub.end, pendingSub.rate);
+        _subscribe(_to, subStart, pendingSub.end, pendingSub.rate);
         delete pendingSubscriptions[_to];
 
         // Send any extra tokens back to the user
@@ -219,8 +219,8 @@ contract Subscriptions is Ownable {
     /// @param user Subscription owner.
     /// @param amount Total amount to be added to the subscription.
     function addTo(address user, uint256 amount) public {
-        require(user != address(0), "user is null");
         require(amount > 0, "amount must be positive");
+        require(user != address(0), "user is null");
 
         Subscription memory sub = subscriptions[user];
         require(sub.start != 0, "no active subscription");
@@ -350,7 +350,6 @@ contract Subscriptions is Ownable {
 
         uint256 subTotal = rate * (end - start);
         bool success = token.transferFrom(msg.sender, address(this), subTotal);
-
         require(success, "IERC20 token transfer failed");
 
         uint256 epoch = currentEpoch();
