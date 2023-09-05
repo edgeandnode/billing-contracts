@@ -341,6 +341,99 @@ describe('BillingConnector', () => {
       expect(connectorBalanceAfter).eq(connectorBalanceBefore)
       expect(bridgeBalanceAfter).eq(bridgeBalanceBefore.add(oneHundred))
     })
+    it("doesn't revert after a frontrunning permit transaction", async function () {
+      const permit = await permitOK(oneHundred, me.address, billingConnector.address)
+      const signedPermit = createSignedPermit(permit, myPrivateKey, SALT)
+
+      const myBalanceBefore = await token.balanceOf(me.address)
+      const userBalanceBefore = await token.balanceOf(user1.address)
+      const connectorBalanceBefore = await token.balanceOf(billingConnector.address)
+      const bridgeBalanceBefore = await token.balanceOf(l1TokenGatewayMock.address)
+
+      // Disable automining to execute two transactions in the same block
+      await hre.network.provider.send('evm_setAutomine', [false])
+
+      const tx = await billingConnector
+        .connect(user1.signer)
+        .addToL2WithPermit(
+          me.address,
+          permit.value,
+          defaultMaxGas,
+          defaultGasPriceBid,
+          defaultMaxSubmissionPrice,
+          permit.deadline,
+          signedPermit.v,
+          signedPermit.r,
+          signedPermit.s,
+          {
+            value: defaultMsgValue,
+          },
+        )
+
+      const expectedCallhookData = defaultAbiCoder.encode(['address'], [me.address])
+      const expectedOutboundCalldata = l1TokenGatewayMock.interface.encodeFunctionData('finalizeInboundTransfer', [
+        token.address,
+        billingConnector.address,
+        l2BillingMock.address,
+        oneHundred,
+        defaultAbiCoder.encode(['bytes', 'bytes'], ['0x', expectedCallhookData]),
+      ])
+
+      // user2 frontruns transaction with their own permit transaction by increasing gas price
+      const frontrunnerTx = await token
+        .connect(user2.signer)
+        .permit(
+          me.address,
+          billingConnector.address,
+          permit.value,
+          permit.deadline,
+          signedPermit.v,
+          signedPermit.r,
+          signedPermit.s,
+          {
+            gasPrice: tx.gasPrice.add(100),
+            gasLimit: tx.gasLimit.add(1000),
+          },
+        )
+
+      // manually mine all transactions
+      await hre.network.provider.send('evm_mine', [])
+
+      // enable automining cleanup
+      await hre.network.provider.send('evm_setAutomine', [true])
+
+      // frontrunnerTx approves funds
+      await expect(frontrunnerTx)
+        .to.emit(token, 'Approval')
+        .withArgs(me.address, billingConnector.address, permit.value)
+
+      // Transaction doesn't revert, instead it uses the allowance created by frontrunnerTx
+      await expect(tx).not.to.be.reverted
+
+      // Real event emitted by BillingConnector
+      await expect(tx).emit(billingConnector, 'TokensSentToL2').withArgs(me.address, me.address, oneHundred)
+      // Mock event from the gateway mock to validate what would be sent to L2
+      await expect(tx)
+        .emit(l1TokenGatewayMock, 'FakeTxToL2')
+        .withArgs(
+          billingConnector.address,
+          defaultMsgValue,
+          defaultMaxGas,
+          defaultGasPriceBid,
+          defaultMaxSubmissionPrice,
+          expectedOutboundCalldata,
+        )
+
+      // Balances are fine since transaction was executed fine
+      const myBalanceAfter = await token.balanceOf(me.address)
+      const userBalanceAfter = await token.balanceOf(user1.address)
+      const connectorBalanceAfter = await token.balanceOf(billingConnector.address)
+      const bridgeBalanceAfter = await token.balanceOf(l1TokenGatewayMock.address)
+      expect(myBalanceAfter).eq(myBalanceBefore.sub(oneHundred))
+      expect(userBalanceAfter).eq(userBalanceBefore) // unchanged
+      expect(connectorBalanceAfter).eq(connectorBalanceBefore)
+      expect(bridgeBalanceAfter).eq(bridgeBalanceBefore.add(oneHundred))
+    })
     it("relies on the token's validation when the sender has provided an expired permit", async function () {
       // Note the permit is from me to billingConnector, but the addToL2WithPermit tx is signed by user1
       const permit = await permitExpired(me.address, billingConnector.address)
