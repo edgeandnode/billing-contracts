@@ -282,12 +282,13 @@ contract BillingConnector is IBillingConnector, Governed, Rescuable, L1ArbitrumM
         bytes32 _r,
         bytes32 _s
     ) internal {
+        IERC20WithPermit token = IERC20WithPermit(address(graphToken));
         // Try permit() before allowance check to advance nonce if possible
-        try IERC20WithPermit(address(graphToken)).permit(_owner, _spender, _value, _deadline, _v, _r, _s) {
+        try token.permit(_owner, _spender, _value, _deadline, _v, _r, _s) {
             return;
         } catch Error(string memory reason) {
             // Check for existing allowance before reverting
-            if (IERC20(address(graphToken)).allowance(_owner, _spender) >= _value) {
+            if (token.allowance(_owner, _spender) >= _value) {
                 return;
             }
 
