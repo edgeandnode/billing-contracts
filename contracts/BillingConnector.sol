@@ -154,7 +154,8 @@ contract BillingConnector is IBillingConnector, Governed, Rescuable, L1ArbitrumM
     }
 
     /**
-     * @notice Add tokens into the billing contract on L2, for any user, using a signed permit
+     * @notice Add tokens into the billing contract on L2 using a signed permit
+     * @dev _user must be the msg.sender
      * @param _user Address of the current owner of the tokens, that will also be the destination in L2
      * @param _amount  Amount of tokens to add
      * @param _maxGas Max gas for the L2 retryable ticket execution
@@ -178,6 +179,7 @@ contract BillingConnector is IBillingConnector, Governed, Rescuable, L1ArbitrumM
     ) external payable override {
         require(_amount != 0, "Must add more than 0");
         require(_user != address(0), "destination != 0");
+        require(_user == msg.sender, "Only tokens owner can call");
         _permit(_user, address(this), _amount, _deadline, _v, _r, _s);
         _addToL2(_user, _user, _amount, _maxGas, _gasPriceBid, _maxSubmissionCost);
     }

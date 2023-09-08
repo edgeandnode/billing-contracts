@@ -296,7 +296,7 @@ describe('BillingConnector', () => {
       const bridgeBalanceBefore = await token.balanceOf(l1TokenGatewayMock.address)
 
       const tx = billingConnector
-        .connect(user1.signer)
+        .connect(me.signer)
         .addToL2WithPermit(
           me.address,
           oneHundred,
@@ -363,9 +363,9 @@ describe('BillingConnector', () => {
           signedPermit.s,
         )
 
-      // my original transaction run by user1 with my permit
+      // my original transaction with permit
       const tx = await billingConnector
-        .connect(user1.signer)
+        .connect(me.signer)
         .addToL2WithPermit(
           me.address,
           permit.value,
@@ -423,12 +423,11 @@ describe('BillingConnector', () => {
       expect(bridgeBalanceAfter).eq(bridgeBalanceBefore.add(oneHundred))
     })
     it("relies on the token's validation when the sender has provided an expired permit", async function () {
-      // Note the permit is from me to billingConnector, but the addToL2WithPermit tx is signed by user1
       const permit = await permitExpired(me.address, billingConnector.address)
       const signedPermit = createSignedPermit(permit, myPrivateKey, SALT)
 
       const tx = billingConnector
-        .connect(user1.signer)
+        .connect(me.signer)
         .addToL2WithPermit(
           me.address,
           permit.value,
@@ -450,7 +449,7 @@ describe('BillingConnector', () => {
       const signedPermit = createSignedPermit(permit, myPrivateKey, SALT)
 
       const tx = billingConnector
-        .connect(user1.signer)
+        .connect(me.signer)
         .addToL2WithPermit(
           me.address,
           permit.value,
@@ -472,7 +471,7 @@ describe('BillingConnector', () => {
       const signedPermit = createSignedPermit(permit, myPrivateKey, SALT)
 
       const tx = billingConnector
-        .connect(user1.signer)
+        .connect(me.signer)
         .addToL2WithPermit(
           me.address,
           permit.value,
@@ -494,7 +493,7 @@ describe('BillingConnector', () => {
       const signedPermit = createSignedPermit(permit, myPrivateKey, SALT)
 
       const tx = billingConnector
-        .connect(user1.signer)
+        .connect(me.signer)
         .addToL2WithPermit(
           AddressZero,
           permit.value,
@@ -516,7 +515,7 @@ describe('BillingConnector', () => {
       const signedPermit = createSignedPermit(permit, myPrivateKey, SALT)
 
       const tx = billingConnector
-        .connect(user1.signer)
+        .connect(me.signer)
         .addToL2WithPermit(
           me.address,
           permit.value,
@@ -538,7 +537,7 @@ describe('BillingConnector', () => {
       const signedPermit = createSignedPermit(permit, myPrivateKey, SALT)
 
       const tx = billingConnector
-        .connect(user1.signer)
+        .connect(me.signer)
         .addToL2WithPermit(
           me.address,
           permit.value,
@@ -554,6 +553,28 @@ describe('BillingConnector', () => {
           },
         )
       await expect(tx).revertedWith('WRONG_ETH_VALUE')
+    })
+    it('rejects calls if not tokens owner', async function () {
+      const permit = await permitOK(oneHundred, me.address, billingConnector.address)
+      const signedPermit = createSignedPermit(permit, myPrivateKey, SALT)
+
+      const tx = billingConnector
+        .connect(user1.signer)
+        .addToL2WithPermit(
+          me.address,
+          permit.value,
+          defaultMaxGas,
+          defaultGasPriceBid,
+          defaultMaxSubmissionPrice,
+          permit.deadline,
+          signedPermit.v,
+          signedPermit.r,
+          signedPermit.s,
+          {
+            value: defaultMsgValue,
+          },
+        )
+      await expect(tx).revertedWith('Only tokens owner can call')
     })
   })
   describe('rescueTokens', function () {
