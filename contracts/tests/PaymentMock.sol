@@ -15,9 +15,11 @@ contract PaymentMock is IPayment {
         token = IERC20(_token);
     }
 
-    function create(address user, bytes calldata data) external override {
-        address _user = abi.decode(data, (address));
+    function create(address user, bytes calldata data) external override returns (uint256) {
+        (address _user, uint256 _amount) = abi.decode(data, (address, uint256));
         require(_user == user, "PaymentMock: user address mismatch");
+        token.transferFrom(msg.sender, address(this), _amount);
+        return _amount;
     }
 
     function addTo(address user, uint256 amount) external override {

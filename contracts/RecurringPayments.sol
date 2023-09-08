@@ -138,6 +138,9 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
     /// @dev Thrown when trying to retrieve a non existing recurring payment
     error NoRecurringPaymentFound();
 
+    /// @dev Thrown when create call on a payment contract pulls an amount different than `createAmount`
+    error InvalidCreateAmount();
+
     /**
      * @dev Thrown when attempting to execute a recurring payment before `executionInterval` has passed
      * @param lastExecutedAt Timestamp of the last recurring payment execution. Zero if never executed.
@@ -223,7 +226,8 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
         // Create account if payment type requires it
         if (paymentType.requiresAccountCreation) {
             if (createAmount > 0) paymentType.tokenAddress.safeTransferFrom(user, address(this), createAmount);
-            IPayment(paymentType.contractAddress).create(user, createData);
+            uint256 pulledAmount = IPayment(paymentType.contractAddress).create(user, createData);
+            if (pulledAmount != createAmount) revert InvalidCreateAmount();
         }
 
         // Add the initial amount to the user account
