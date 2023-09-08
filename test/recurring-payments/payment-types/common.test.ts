@@ -38,6 +38,7 @@ describe('RecurringPayments: payment types', () => {
   const ten = toGRT('10')
   const oneHundred = toGRT('100')
   const oneMillion = toGRT('1000000')
+  const hundredMillion = toGRT('100000000')
   const oneBillion = toGRT('1000000000')
   const tenBillion = toGRT('10000000000')
 
@@ -113,8 +114,9 @@ describe('RecurringPayments: payment types', () => {
     await setBalance(governor.address, oneHundred)
 
     // Init payment type array
-    createData = ethers.utils.defaultAbiCoder.encode(['address'], [user1.address])
+    createData = ethers.utils.defaultAbiCoder.encode(['address', 'uint256'], [user1.address, ten])
     testPaymentTypes[0].createData = createData
+    testPaymentTypes[0].createAmount = ten
     testPaymentTypes[0].contractAddress = payment.address
     testPaymentTypes[1].contractAddress = billing.address
     testPaymentTypes[2].contractAddress = subscriptions.address
@@ -175,6 +177,27 @@ describe('RecurringPayments: payment types', () => {
             testPaymentType.createData,
           )
         })
+
+        if (testPaymentType.requiresCreate) {
+          it('should prevent creating a recurring payment if createAmount does not match pulled amount', async function () {
+            const initialAmount = zero
+            const recurringAmount = oneHundred
+
+            // Add funds to RP contract to ensure attack is possible
+            await token.connect(me.signer).transfer(recurringPayments.address, hundredMillion)
+
+            // Create RP
+            await token
+              .connect(user1.signer)
+              .approve(recurringPayments.address, initialAmount.add(testPaymentType.createAmount))
+
+            const tx = recurringPayments
+              .connect(user1.signer)
+              .create(testPaymentType.name, initialAmount, recurringAmount, zero, testPaymentType.createData)
+
+            await expect(tx).to.be.revertedWithCustomError(recurringPayments, 'InvalidCreateAmount')
+          })
+        }
 
         it('should create a recurring payment with an initial amount', async function () {
           const initialAmount = ten
