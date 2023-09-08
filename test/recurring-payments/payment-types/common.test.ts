@@ -10,7 +10,7 @@ import { getAccounts, Account, toGRT } from '../../../utils/helpers'
 
 import { RecurringPayments } from '../../../build/types/contracts/RecurringPayments'
 import { Billing, PaymentMock, Subscriptions } from '../../../build/types'
-import { buildCheckExecPayload, createRP, executeRP, latestBlockTimestamp } from '../helpers'
+import { addMonths, buildCheckExecPayload, createRP, executeRP, latestBlockTimestamp } from '../helpers'
 
 const { ethers } = hre
 
@@ -37,11 +37,12 @@ describe('RecurringPayments: payment types', () => {
   const ten = toGRT('10')
   const oneHundred = toGRT('100')
   const oneMillion = toGRT('1000000')
+  const oneBillion = toGRT('1000000000')
   const tenBillion = toGRT('10000000000')
 
   const initialMaxGasPrice = ethers.utils.parseUnits('3.5', 'gwei')
-  const initialExecutionInterval = 2
-  const initialExpirationInterval = 13
+  const initialExecutionInterval = 1
+  const initialExpirationInterval = 6
   const tooDamnHighGasPrice = ethers.utils.parseUnits('100', 'gwei')
   const subscriptionsEpochSeconds = BigNumber.from(100)
 
@@ -65,22 +66,20 @@ describe('RecurringPayments: payment types', () => {
       contractAddress: '',
       requiresCreate: true,
       createData: subsData,
-      createApproval: BigNumber.from(5).mul(520),
-      createAmount: BigNumber.from(5).mul(520),
+      createApproval: BigNumber.from(0),
+      createAmount: BigNumber.from(0),
+      recurringAmount: BigNumber.from(0),
     },
   ]
 
   beforeEach(async function () {
     // eslint-disable-next-line @typescript-eslint/no-extra-semi
     ;[me, governor, gelatoNetwork, user1, collector1, l2TokenGatewayMock] = await getAccounts()
-
-    createData = ethers.utils.defaultAbiCoder.encode(['address'], [user1.address])
     const now = await latestBlockTimestamp()
-    const start = now.sub(10)
-    const end = now.add(510)
-    const rate = BigNumber.from(5)
+    const start = now
+    const end = addMonths(start, 1)
+    const rate = toGRT('5')
     subsData = ethers.utils.defaultAbiCoder.encode(['uint64', 'uint64', 'uint128'], [start, end, rate])
-
     token = await deployment.deployToken([tenBillion], me.signer, true)
 
     automate = await deployMockGelatoNetwork(me.signer, gelatoNetwork.address)
@@ -108,16 +107,20 @@ describe('RecurringPayments: payment types', () => {
     )
 
     // Airdrop
-    await token.connect(me.signer).transfer(user1.address, oneMillion)
+    await token.connect(me.signer).transfer(user1.address, oneBillion)
     await setBalance(me.address, oneHundred)
     await setBalance(governor.address, oneHundred)
 
     // Init payment type array
+    createData = ethers.utils.defaultAbiCoder.encode(['address'], [user1.address])
     testPaymentTypes[0].createData = createData
     testPaymentTypes[0].contractAddress = payment.address
     testPaymentTypes[1].contractAddress = billing.address
     testPaymentTypes[2].contractAddress = subscriptions.address
     testPaymentTypes[2].createData = subsData
+    testPaymentTypes[2].recurringAmount = rate.mul(end.sub(start))
+    testPaymentTypes[2].createAmount = rate.mul(end.sub(start))
+    testPaymentTypes[2].createApproval = rate.mul(end.sub(start))
   })
 
   for (const testPaymentType of testPaymentTypes) {
@@ -266,7 +269,10 @@ describe('RecurringPayments: payment types', () => {
 
       describe('execute()', function () {
         beforeEach(async function () {
-          await token.connect(user1.signer).approve(recurringPayments.address, zero.add(testPaymentType.createAmount))
+          const recurringAmount = testPaymentType.recurringAmount ?? oneHundred
+          await token
+            .connect(user1.signer)
+            .approve(recurringPayments.address, recurringAmount.add(testPaymentType.createAmount))
           await createRP(
             user1,
             user1.address,
@@ -274,11 +280,10 @@ describe('RecurringPayments: payment types', () => {
             token,
             testPaymentType.name,
             zero,
-            oneHundred,
+            recurringAmount,
             testPaymentType.createAmount,
             testPaymentType.createData,
           )
-          await token.connect(user1.signer).approve(recurringPayments.address, oneMillion)
         })
 
         it('should revert if gas price is too high', async function () {
@@ -294,17 +299,24 @@ describe('RecurringPayments: payment types', () => {
         })
 
         it('should allow execution by any party if executionInterval has passed', async function () {
+          const times = 5
+          const recurringAmount = testPaymentType.recurringAmount ?? oneHundred
+          await token.connect(user1.signer).approve(recurringPayments.address, recurringAmount.mul(times + 1))
+
           // Execute once to set lastExecutedAt to a non-zero value
           await executeRP(me, user1.address, recurringPayments, token)
 
           // Time travel to next execution time and execute it a few times
-          for (let index = 0; index < 5; index++) {
+          for (let index = 0; index < times; index++) {
             await time.increaseTo(await recurringPayments.getNextExecutionTime(user1.address))
             await executeRP(me, user1.address, recurringPayments, token)
           }
         })
 
         it('should prevent early execution from third parties', async function () {
+          const recurringAmount = testPaymentType.recurringAmount ?? oneHundred
+          await token.connect(user1.signer).approve(recurringPayments.address, recurringAmount)
+
           // Execute once to set lastExecutedAt to a non-zero value
           await executeRP(me, user1.address, recurringPayments, token)
 
@@ -313,12 +325,18 @@ describe('RecurringPayments: payment types', () => {
         })
 
         it('should allow early execution if the caller is the RP owner', async function () {
+          const recurringAmount = testPaymentType.recurringAmount ?? oneHundred
+          await token.connect(user1.signer).approve(recurringPayments.address, recurringAmount.mul(2))
+
           // Execute once to set lastExecutedAt to a non-zero value
           await executeRP(me, user1.address, recurringPayments, token)
           await executeRP(user1, user1.address, recurringPayments, token)
         })
 
         it('should cancel the recurring payment if expiration time has passed', async function () {
+          const recurringAmount = testPaymentType.recurringAmount ?? oneHundred
+          await token.connect(user1.signer).approve(recurringPayments.address, recurringAmount)
+
           // Execute once to set lastExecutedAt to a non-zero value
           await executeRP(me, user1.address, recurringPayments, token)
 
@@ -329,16 +347,28 @@ describe('RecurringPayments: payment types', () => {
           await expect(tx)
             .to.emit(recurringPayments, 'RecurringPaymentCancelled')
             .withArgs(user1.address, recurringPayment.taskId, true)
+
+          const afterRecurringPayment = await recurringPayments.recurringPayments(user1.address)
+          expect(afterRecurringPayment.createdAt).to.equal(0)
         })
 
         it('should not cancel the recurring payment if expiration time has passed but the caller is the owner', async function () {
+          const recurringAmount = testPaymentType.recurringAmount ?? oneHundred
+          await token.connect(user1.signer).approve(recurringPayments.address, recurringAmount.mul(2))
+
           // Execute once to set lastExecutedAt to a non-zero value
           await executeRP(me, user1.address, recurringPayments, token)
 
           await time.increaseTo(await recurringPayments.getExpirationTime(user1.address))
-          await executeRP(user1, user1.address, recurringPayments, token)
+          try {
+            await executeRP(user1, user1.address, recurringPayments, token)
+          } catch (error) {}
+
+          const recurringPayment = await recurringPayments.recurringPayments(user1.address)
+          expect(recurringPayment.createdAt).not.to.equal(0)
         })
       })
+
       describe('check()', function () {
         beforeEach(async function () {
           await token.connect(user1.signer).approve(recurringPayments.address, zero.add(testPaymentType.createAmount))

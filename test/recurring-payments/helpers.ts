@@ -85,6 +85,8 @@ export async function executeRP(signer: Account, user: string, recurringPayments
   const afterRecurringPayment = await recurringPayments.recurringPayments(user)
   const afterUserBalance = await token.balanceOf(user)
   const afterRPBalance = await token.balanceOf(recurringPayments.address)
+  const afterNextExecutionTime = await recurringPayments.getNextExecutionTime(user)
+  const afterExpirationTime = await recurringPayments.getExpirationTime(user)
 
   expect(afterRecurringPayment.recurringAmount).to.equal(beforeRecurringPayment.recurringAmount)
   expect(afterRecurringPayment.createdAt).to.equal(beforeRecurringPayment.createdAt)
@@ -96,6 +98,13 @@ export async function executeRP(signer: Account, user: string, recurringPayments
 
   expect(afterRPBalance).to.equal(beforeRPBalance)
   expect(afterUserBalance).to.equal(beforeUserBalance.sub(beforeRecurringPayment.recurringAmount))
+
+  expect(afterNextExecutionTime).to.equal(
+    addMonths(afterRecurringPayment.lastExecutedAt, (await recurringPayments.executionInterval()).toNumber()),
+  )
+  expect(afterExpirationTime).to.equal(
+    addMonths(afterRecurringPayment.lastExecutedAt, (await recurringPayments.expirationInterval()).toNumber()),
+  )
 }
 
 export function buildCheckExecPayload(address: string) {
@@ -108,4 +117,33 @@ export function buildCheckExecPayload(address: string) {
 export const latestBlockTimestamp = async () => {
   const block = await hre.network.provider.send('eth_getBlockByNumber', ['latest', false])
   return BigNumber.from(block.timestamp)
+}
+
+// https://github.com/bokkypoobah/BokkyPooBahsDateTimeLibrary#addmonths
+export const addMonths = (timestamp: BigNumber, months: number): BigNumber => {
+  const date = new Date(timestamp.toNumber() * 1000)
+
+  let month = date.getUTCMonth() + months
+  let day = date.getUTCDate()
+
+  const year = Math.floor((month - 1) / 12) + date.getUTCFullYear()
+
+  month = ((month - 1) % 12) + 1
+
+  const daysInMonth = new Date(year, month + 1, 0).getUTCDate()
+  if (day > daysInMonth) {
+    day = daysInMonth
+  }
+
+  const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000
+  const MILLISECONDS_PER_MINUTE = 60 * 1000
+  const adjustedDate = new Date(year, month, day)
+
+  const newTimestamp = Math.floor(
+    (adjustedDate.getTime() -
+      adjustedDate.getTimezoneOffset() * MILLISECONDS_PER_MINUTE +
+      (date.getTime() % MILLISECONDS_PER_DAY)) /
+      1000,
+  )
+  return BigNumber.from(newTimestamp)
 }

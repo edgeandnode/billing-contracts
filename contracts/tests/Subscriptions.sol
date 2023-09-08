@@ -200,21 +200,22 @@ contract Subscriptions is Ownable {
         emit AuthorizedSignerRemoved(user, _signer);
     }
 
-    /// @notice Create a subscription for the tx origin address.
+    /// @notice Create a subscription for a user.
     /// Will override an active subscription if one exists.
     /// @dev The function's name and signature, `create`, are used to comply with the `IPayment`
     /// interface for recurring payments.
     /// @dev Note that this function does not protect user against a start time in the past.
-    /// @param user Subscription owner. Must match tx.origin.
+    /// @param user Subscription owner.
     /// @param data Encoded start, end and rate for the new subscription.
     function create(address user, bytes calldata data) public onlyRecurringPayments {
         (uint64 start, uint64 end, uint128 rate) = abi.decode(data, (uint64, uint64, uint128));
         _subscribe(user, start, end, rate);
     }
 
-    /// @notice Extends an active subscription end time.
+    /// @notice Extends a subscription's end time.
     /// The time the subscription will be extended by is calculated as `amount / rate`, where
     /// `rate` is the existing subscription rate and `amount` is the new amount of tokens provided.
+    /// The new end time must be in the future.
     /// @dev The function's name, `addTo`, is used to comply with the `IPayment` interface for recurring payments.
     /// @param user Subscription owner.
     /// @param amount Total amount to be added to the subscription.
@@ -223,11 +224,12 @@ contract Subscriptions is Ownable {
         require(user != address(0), "user is null");
 
         Subscription memory sub = subscriptions[user];
-        require(sub.start != 0, "no active subscription");
+        require(sub.start != 0, "no subscription found");
         require(sub.rate != 0, "cannot extend a zero rate subscription");
 
         uint64 oldEnd = sub.end;
         uint64 newEnd = oldEnd + uint64(amount / sub.rate);
+        require(block.timestamp < newEnd, "new end cannot be in the past");
 
         _setEpochs(sub.start, sub.end, -int128(sub.rate));
         _setEpochs(sub.start, newEnd, int128(sub.rate));

@@ -11,7 +11,7 @@ import { getPaymentTypeId } from '../../utils/recurring'
 
 import { RecurringPayments } from '../../build/types/contracts/RecurringPayments'
 import { PaymentMock } from '../../build/types'
-import { createRP } from './helpers'
+import { addMonths, createRP } from './helpers'
 
 const { ethers } = hre
 
@@ -35,10 +35,10 @@ describe('RecurringPayments: Contract', () => {
   const tenBillion = toGRT('10000000000')
 
   const initialMaxGasPrice = ethers.utils.parseUnits('3.5', 'gwei')
-  const initialExecutionInterval = 2
-  const initialExpirationInterval = 13
-  const newExecutionInterval = 1
-  const newExpirationInterval = 6
+  const initialExecutionInterval = 1
+  const initialExpirationInterval = 6
+  const newExecutionInterval = 2
+  const newExpirationInterval = 4
 
   beforeEach(async function () {
     // eslint-disable-next-line @typescript-eslint/no-extra-semi
@@ -113,20 +113,67 @@ describe('RecurringPayments: Contract', () => {
           .registerPaymentType(paymentTypeName, payment.address, token.address, true)
 
         // Create recurring payment
-        await createRP(user1, user1.address, recurringPayments, token, paymentTypeName, zero, oneHundred, createData)
+        await createRP(
+          user1,
+          user1.address,
+          recurringPayments,
+          token,
+          paymentTypeName,
+          zero,
+          oneHundred,
+          zero,
+          createData,
+        )
 
         // Get next execution time
         const nextExecutionTime = await recurringPayments.getNextExecutionTime(user1.address)
-        console.log('nextExecutionTime', nextExecutionTime.toString())
 
-        // RP inits lastExecutedAt to 0, so first scheduled execution is `executionInterval` months after new Date(0)
-        const expectedNextExecutionTime = Math.floor(new Date('March 1, 1970 00:00:00 GMT').getTime() / 1000)
-        expect(nextExecutionTime).to.eq(expectedNextExecutionTime)
+        // Calculate next execution time
+        const recurringPayment = await recurringPayments.recurringPayments(user1.address)
+        const executionInterval = await recurringPayments.executionInterval()
+        const calcNextExecutionTime = addMonths(recurringPayment.lastExecutedAt, executionInterval.toNumber())
+
+        expect(nextExecutionTime).to.eq(calcNextExecutionTime)
+      })
+    })
+
+    describe('getExpirationTime()', function () {
+      it('should revert if user has no recurring payment', async function () {
+        const tx = recurringPayments.connect(user1.signer).getExpirationTime(user1.address)
+        await expect(tx).to.be.revertedWithCustomError(recurringPayments, 'NoRecurringPaymentFound')
       })
 
-      it.skip('should test a bit more here')
+      it('should return the expiration time', async function () {
+        const paymentTypeName = 'Billing1.0'
+
+        await recurringPayments
+          .connect(governor.signer)
+          .registerPaymentType(paymentTypeName, payment.address, token.address, true)
+
+        // Create recurring payment
+        await createRP(
+          user1,
+          user1.address,
+          recurringPayments,
+          token,
+          paymentTypeName,
+          zero,
+          oneHundred,
+          zero,
+          createData,
+        )
+
+        // Get expiration time
+        const expirationTime = await recurringPayments.getExpirationTime(user1.address)
+
+        // Calculate expiration time
+        const recurringPayment = await recurringPayments.recurringPayments(user1.address)
+        const expirationInterval = await recurringPayments.expirationInterval()
+        const calcExpirationTime = addMonths(recurringPayment.lastExecutedAt, expirationInterval.toNumber())
+
+        expect(expirationTime).to.eq(calcExpirationTime)
+      })
     })
-    it.skip('should properly test getExpirationTime()')
   })
 
   describe('payment types', function () {
