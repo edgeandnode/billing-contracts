@@ -211,9 +211,6 @@ describe('RecurringPayments: payment types', () => {
       })
 
       it('should allow execution by any party if executionInterval has passed', async function () {
-        // Execute once to set lastExecutedAt to a non-zero value
-        await executeRP(me, user1.address, recurringPayments, token)
-
         const recurringPayment = await recurringPayments.recurringPayments(user1.address)
 
         // Time travel to next execution time and execute it a few times

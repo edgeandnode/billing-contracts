@@ -193,7 +193,7 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
         );
 
         // Save recurring payment
-        recurringPayments[user] = RecurringPayment(id, recurringAmount, block.timestamp, 0, paymentType);
+        recurringPayments[user] = RecurringPayment(id, recurringAmount, block.timestamp, block.timestamp, paymentType);
 
         // Create account if payment type requires it
         if (paymentType.requiresAccountCreation) {
@@ -251,7 +251,7 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
         // If user is calling we allow early execution and don't automatically cancel even if expiration time has passed
         if (user != msg.sender) {
             // Cancel the recurring payment if it has failed for long enough
-            if (_canCancel(recurringPayment.createdAt, recurringPayment.lastExecutedAt)) {
+            if (_canCancel(recurringPayment.lastExecutedAt)) {
                 _cancel(user, true);
                 return;
             }
@@ -454,9 +454,8 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
      * @param lastExecutedAt Timestamp the recurring payment was last executed
      * @return True if the recurring payment can be cancelled
      */
-    function _canCancel(uint256 createdAt, uint256 lastExecutedAt) private view returns (bool) {
-        uint256 lastExecutedOrCreatedAt = lastExecutedAt == 0 ? createdAt : lastExecutedAt;
-        return block.timestamp >= BokkyPooBahsDateTimeLibrary.addMonths(lastExecutedOrCreatedAt, expirationInterval);
+    function _canCancel(uint256 lastExecutedAt) private view returns (bool) {
+        return block.timestamp >= BokkyPooBahsDateTimeLibrary.addMonths(lastExecutedAt, expirationInterval);
     }
 
     /**
