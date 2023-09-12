@@ -187,7 +187,9 @@ describe('RecurringPayments: payment types', () => {
     })
 
     describe('execute()', function () {
-      beforeEach(async function () {
+      beforeEach(async function () {})
+
+      it('should allow execution by any party if executionInterval has passed', async function () {
         const now = await latestBlockTimestamp()
         const start = now
         const end = addMonths(start, 1)
@@ -208,11 +210,7 @@ describe('RecurringPayments: payment types', () => {
           createAmount,
           createData,
         )
-      })
-
-      it('should allow execution by any party if executionInterval has passed', async function () {
         const recurringPayment = await recurringPayments.recurringPayments(user1.address)
-
         // Time travel to next execution time and execute it a few times
         for (let index = 0; index < 5; index++) {
           // Before state
@@ -223,12 +221,14 @@ describe('RecurringPayments: payment types', () => {
 
           // After state
           const afterSubscription = await subscriptions.subscriptions(user1.address)
+          const afterRecurringPayment = await recurringPayments.recurringPayments(user1.address)
+          const oldEnd = Math.max(beforeSubscription.end.toNumber(), afterRecurringPayment.lastExecutedAt.toNumber())
 
           // Check
           expect(afterSubscription.rate).to.equal(beforeSubscription.rate)
           expect(afterSubscription.start).to.equal(beforeSubscription.start)
           expect(afterSubscription.end).to.equal(
-            beforeSubscription.end.add(recurringPayment.recurringAmount.div(beforeSubscription.rate)),
+            BigNumber.from(oldEnd).add(recurringPayment.recurringAmount.div(beforeSubscription.rate)),
           )
         }
       })
