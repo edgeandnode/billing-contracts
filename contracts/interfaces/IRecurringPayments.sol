@@ -40,6 +40,10 @@ interface IRecurringPayments {
         uint256 createdAt;
         uint256 lastExecutedAt;
         uint256 executionInterval;
+<<<<<<< HEAD
+=======
+        uint256 expirationInterval;
+>>>>>>> a244f10 (fix: store execution and expiration intervals in rp struct)
         PaymentType paymentType;
     }
 
