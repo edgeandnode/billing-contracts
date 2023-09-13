@@ -193,7 +193,15 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
         );
 
         // Save recurring payment
-        recurringPayments[user] = RecurringPayment(id, recurringAmount, block.timestamp, block.timestamp, paymentType);
+        recurringPayments[user] = RecurringPayment(
+            id,
+            recurringAmount,
+            block.timestamp,
+            block.timestamp,
+            executionInterval,
+            expirationInterval,
+            paymentType
+        );
 
         // Create account if payment type requires it
         if (paymentType.requiresAccountCreation) {
@@ -251,13 +259,13 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
         // If user is calling we allow early execution and don't automatically cancel even if expiration time has passed
         if (user != msg.sender) {
             // Cancel the recurring payment if it has failed for long enough
-            if (_canCancel(recurringPayment.lastExecutedAt)) {
+            if (_canCancel(recurringPayment.lastExecutedAt, recurringPayment.expirationInterval)) {
                 _cancel(user, true);
                 return;
             }
 
             // Prevent early execution by third parties
-            if (!_canExecute(recurringPayment.lastExecutedAt))
+            if (!_canExecute(recurringPayment.lastExecutedAt, recurringPayment.executionInterval))
                 revert RecurringPaymentInCooldown(recurringPayment.lastExecutedAt);
         }
 
@@ -363,7 +371,7 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
     function check(address user) external view returns (bool canExec, bytes memory execPayload) {
         RecurringPayment storage recurringPayment = _getRecurringPaymentOrRevert(user);
 
-        canExec = _canExecute(recurringPayment.lastExecutedAt);
+        canExec = _canExecute(recurringPayment.lastExecutedAt, recurringPayment.executionInterval);
         execPayload = abi.encodeCall(this.execute, (user));
 
         return (canExec, execPayload);
@@ -378,7 +386,8 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
      */
     function getNextExecutionTime(address user) external view returns (uint256) {
         RecurringPayment storage recurringPayment = _getRecurringPaymentOrRevert(user);
-        return BokkyPooBahsDateTimeLibrary.addMonths(recurringPayment.lastExecutedAt, executionInterval);
+        return
+            BokkyPooBahsDateTimeLibrary.addMonths(recurringPayment.lastExecutedAt, recurringPayment.executionInterval);
     }
 
     /**
@@ -390,7 +399,8 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
      */
     function getExpirationTime(address user) external view returns (uint256) {
         RecurringPayment storage recurringPayment = _getRecurringPaymentOrRevert(user);
-        return BokkyPooBahsDateTimeLibrary.addMonths(recurringPayment.lastExecutedAt, expirationInterval);
+        return
+            BokkyPooBahsDateTimeLibrary.addMonths(recurringPayment.lastExecutedAt, recurringPayment.expirationInterval);
     }
 
     /**
@@ -443,19 +453,21 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
     /**
      * @notice Checks wether a recurring payment can be executed based on it's last execution
      * @param lastExecutedAt Timestamp the recurring payment was last executed
+     * @param rpExecutionInterval Execution interval of the recurring payment
      * @return True if the recurring payment can be executed
      */
-    function _canExecute(uint256 lastExecutedAt) private view returns (bool) {
-        return block.timestamp >= BokkyPooBahsDateTimeLibrary.addMonths(lastExecutedAt, executionInterval);
+    function _canExecute(uint256 lastExecutedAt, uint256 rpExecutionInterval) private view returns (bool) {
+        return block.timestamp >= BokkyPooBahsDateTimeLibrary.addMonths(lastExecutedAt, rpExecutionInterval);
     }
 
     /**
      * @notice Checks wether a recurring payment can be cancelled based on it's last execution or creation date
      * @param lastExecutedAt Timestamp the recurring payment was last executed
+     * @param rpExpirationInterval Expiration interval of the recurring payment
      * @return True if the recurring payment can be cancelled
      */
-    function _canCancel(uint256 lastExecutedAt) private view returns (bool) {
-        return block.timestamp >= BokkyPooBahsDateTimeLibrary.addMonths(lastExecutedAt, expirationInterval);
+    function _canCancel(uint256 lastExecutedAt, uint256 rpExpirationInterval) private view returns (bool) {
+        return block.timestamp >= BokkyPooBahsDateTimeLibrary.addMonths(lastExecutedAt, rpExpirationInterval);
     }
 
     /**
