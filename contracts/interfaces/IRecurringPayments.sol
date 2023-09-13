@@ -38,6 +38,8 @@ interface IRecurringPayments {
         uint256 recurringAmount;
         uint256 createdAt;
         uint256 lastExecutedAt;
+        uint256 executionInterval;
+        uint256 expirationInterval;
         PaymentType paymentType;
     }
 
