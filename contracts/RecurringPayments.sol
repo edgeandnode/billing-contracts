@@ -398,7 +398,8 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
      */
     function getExpirationTime(address user) external view returns (uint256) {
         RecurringPayment storage recurringPayment = _getRecurringPaymentOrRevert(user);
-        return BokkyPooBahsDateTimeLibrary.addMonths(recurringPayment.lastExecutedAt, expirationInterval);
+        return
+            BokkyPooBahsDateTimeLibrary.addMonths(recurringPayment.lastExecutedAt, recurringPayment.expirationInterval);
     }
 
     /**
