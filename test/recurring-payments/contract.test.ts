@@ -81,7 +81,7 @@ describe('RecurringPayments: Contract', () => {
 
       await recurringPayments
         .connect(governor.signer)
-        .registerPaymentType(paymentTypeName, payment.address, token.address, true)
+        .registerPaymentType(paymentTypeName, ten, payment.address, token.address, true)
     })
 
     it('should set the executionInterval', async function () {
@@ -125,7 +125,7 @@ describe('RecurringPayments: Contract', () => {
 
         await recurringPayments
           .connect(governor.signer)
-          .registerPaymentType(paymentTypeName, payment.address, token.address, true)
+          .registerPaymentType(paymentTypeName, ten, payment.address, token.address, true)
 
         // Create recurring payment
         await createRP(
@@ -163,7 +163,7 @@ describe('RecurringPayments: Contract', () => {
 
         await recurringPayments
           .connect(governor.signer)
-          .registerPaymentType(paymentTypeName, payment.address, token.address, true)
+          .registerPaymentType(paymentTypeName, ten, payment.address, token.address, true)
 
         // Create recurring payment
         await createRP(
@@ -196,21 +196,21 @@ describe('RecurringPayments: Contract', () => {
       it('should prevent registering payment types if contract address is not a contract', async function () {
         const tx = recurringPayments
           .connect(governor.signer)
-          .registerPaymentType('Billing1.0', me.address, token.address, true)
+          .registerPaymentType('Billing1.0', ten, me.address, token.address, true)
         await expect(tx).to.be.revertedWithCustomError(recurringPayments, 'AddressNotAContract')
       })
 
       it('should prevent registering payment types if token address is not a contract', async function () {
         const tx = recurringPayments
           .connect(governor.signer)
-          .registerPaymentType('Billing1.0', payment.address, me.address, true)
+          .registerPaymentType('Billing1.0', ten, payment.address, me.address, true)
         await expect(tx).to.be.revertedWithCustomError(recurringPayments, 'AddressNotAContract')
       })
 
       it('should prevent unauthorized parties to register a payment type', async function () {
         const tx = recurringPayments
           .connect(me.signer)
-          .registerPaymentType('Billing1.0', payment.address, token.address, true)
+          .registerPaymentType('Billing1.0', ten, payment.address, token.address, true)
         await expect(tx).to.be.revertedWith('Only Governor can call')
       })
 
@@ -220,15 +220,16 @@ describe('RecurringPayments: Contract', () => {
 
         const tx = recurringPayments
           .connect(governor.signer)
-          .registerPaymentType(paymentTypeName, payment.address, token.address, true)
+          .registerPaymentType(paymentTypeName, ten, payment.address, token.address, true)
 
         await expect(tx)
           .to.emit(recurringPayments, 'PaymentTypeRegistered')
-          .withArgs(paymentTypeId, paymentTypeName, payment.address, token.address)
+          .withArgs(paymentTypeId, ten, paymentTypeName, payment.address, token.address)
 
         // Check RP contract state
         const paymentType = await recurringPayments.paymentTypes(paymentTypeId)
         expect(paymentType.id).to.equal(paymentTypeId)
+        expect(paymentType.minimumRecurringAmount).to.equal(ten)
         expect(paymentType.name).to.equal(paymentTypeName)
         expect(paymentType.contractAddress).to.equal(payment.address)
         expect(paymentType.tokenAddress).to.equal(token.address)
@@ -244,14 +245,14 @@ describe('RecurringPayments: Contract', () => {
 
         const tx = recurringPayments
           .connect(governor.signer)
-          .registerPaymentType(paymentTypeName, payment.address, token.address, true)
+          .registerPaymentType(paymentTypeName, ten, payment.address, token.address, true)
         await expect(tx)
           .to.emit(recurringPayments, 'PaymentTypeRegistered')
-          .withArgs(paymentTypeId, paymentTypeName, payment.address, token.address)
+          .withArgs(paymentTypeId, ten, paymentTypeName, payment.address, token.address)
 
         const tx2 = recurringPayments
           .connect(governor.signer)
-          .registerPaymentType(paymentTypeName, payment.address, token.address, true)
+          .registerPaymentType(paymentTypeName, ten, payment.address, token.address, true)
         await expect(tx2).to.be.revertedWithCustomError(recurringPayments, 'PaymentTypeAlreadyRegistered')
       })
     })
@@ -273,7 +274,7 @@ describe('RecurringPayments: Contract', () => {
         // Register
         await recurringPayments
           .connect(governor.signer)
-          .registerPaymentType(paymentTypeName, payment.address, token.address, true)
+          .registerPaymentType(paymentTypeName, ten, payment.address, token.address, true)
 
         // Unregister
         const tx = recurringPayments.connect(governor.signer).unregisterPaymentType(paymentTypeName)
@@ -282,6 +283,7 @@ describe('RecurringPayments: Contract', () => {
         // Check RP contract state
         const paymentType = await recurringPayments.paymentTypes(paymentTypeId)
         expect(paymentType.id).to.equal(0)
+        expect(paymentType.minimumRecurringAmount).to.equal(0)
         expect(paymentType.name).to.equal('')
         expect(paymentType.contractAddress).to.equal(ethers.constants.AddressZero)
         expect(paymentType.tokenAddress).to.equal(ethers.constants.AddressZero)
@@ -289,6 +291,36 @@ describe('RecurringPayments: Contract', () => {
         // Check RP allowance
         const rpAllowance = await token.allowance(recurringPayments.address, payment.address)
         expect(rpAllowance).to.equal(0)
+      })
+    })
+
+    describe('setMinimumRecurringAmount()', function () {
+      it('should prevent unauthorized parties to change the minimum recurring amount', async function () {
+        const tx = recurringPayments.connect(me.signer).setMinimumRecurringAmount('Billing1.0', oneHundred)
+        await expect(tx).to.be.revertedWith('Only Governor can call')
+      })
+
+      it('should allow governor to change the minimum recurring amount', async function () {
+        const paymentTypeName = 'Billing1.0'
+        const paymentTypeId = getPaymentTypeId(paymentTypeName)
+        const newMinimumRecurringAmount = oneHundred
+
+        // Register
+        await recurringPayments
+          .connect(governor.signer)
+          .registerPaymentType(paymentTypeName, ten, payment.address, token.address, true)
+
+        // Change minimum recurring amount
+        const tx = recurringPayments
+          .connect(governor.signer)
+          .setMinimumRecurringAmount(paymentTypeName, newMinimumRecurringAmount)
+        await expect(tx)
+          .to.emit(recurringPayments, 'MinimumRecurringAmountSet')
+          .withArgs(paymentTypeId, paymentTypeName, newMinimumRecurringAmount)
+
+        // Check RP contract state
+        const paymentType = await recurringPayments.paymentTypes(paymentTypeId)
+        expect(paymentType.minimumRecurringAmount).to.eq(newMinimumRecurringAmount)
       })
     })
   })

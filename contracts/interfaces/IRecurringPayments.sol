@@ -24,6 +24,7 @@ interface IRecurringPayments {
      */
     struct PaymentType {
         uint256 id;
+        uint256 minimumRecurringAmount;
         IPayment contractAddress;
         IERC20 tokenAddress;
         bool requiresAccountCreation;
@@ -61,10 +62,18 @@ interface IRecurringPayments {
 
     /**
      * @notice Cancel a recurring payment for the calling user.
-     * This will only cancell the recurring payment task, the user's balance in the target payment contract will
+     * This will only cancel the recurring payment task, the user's balance in the target payment contract will
      * remain untouched.
      */
     function cancel() external;
+
+    /**
+     * @notice Cancel a recurring payment for the calling user.
+     * This will only cancel the recurring payment task, the user's balance in the target payment contract will
+     * remain untouched.
+     * @param user User address
+     */
+    function cancel(address user) external;
 
     /**
      * @notice Execute a recurring payment for `user`.
@@ -92,6 +101,7 @@ interface IRecurringPayments {
      */
     function registerPaymentType(
         string calldata name,
+        uint256 minimumRecurringAmount,
         address contractAddress,
         address tokenAddress,
         bool requiresAccountCreation
@@ -105,6 +115,13 @@ interface IRecurringPayments {
      * @param name The name of the payment type to unregister. Must exist.
      */
     function unregisterPaymentType(string calldata name) external;
+
+    /**
+     * @notice Sets the minimum recurring amount for a payment type.
+     * @param name The name of the payment type to update. Must exist.
+     * @param minimumRecurringAmount The new minimum recurring amount.
+     */
+    function setMinimumRecurringAmount(string calldata name, uint256 minimumRecurringAmount) external;
 
     /**
      * @notice Sets the minimum execution interval for recurring payments.
