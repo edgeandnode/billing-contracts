@@ -74,7 +74,7 @@ describe('RecurringPayments: payment types', () => {
     beforeEach(async function () {
       await recurringPayments
         .connect(governor.signer)
-        .registerPaymentType(paymentTypeName, billing.address, token.address, false)
+        .registerPaymentType(paymentTypeName, ten, billing.address, token.address, false)
     })
 
     describe('create()', function () {
