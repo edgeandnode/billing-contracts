@@ -275,6 +275,7 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
      * result in the recurring payment being automatically cancelled.
      * @dev The function will revert if the gas price is too high (threshold defined by `maxGasPrice`).
      * @dev This function is meant to be called by Gelato Network task runners but can be called permissionlessly.
+     * @dev Since Gelato runners will only call this function if `check(user)` returns true, most of the validations don't happen here.
      * @param user User address
      */
     function execute(address user) external {
@@ -410,11 +411,23 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
      * @return execPayload Calldata indicating the function and parameters to execute a recurring payment (`execute(user)`).
      */
     function check(address user) external view returns (bool canExec, bytes memory execPayload) {
-        RecurringPayment storage recurringPayment = _getRecurringPaymentOrRevert(user);
+        RecurringPayment storage recurringPayment = recurringPayments[user];
+        if (recurringPayment.taskId == bytes32(0)) return (false, execPayload);
 
+        // Check if the recurring payment can be executed
         canExec = _canExecute(recurringPayment.lastExecutedAt, recurringPayment.executionInterval);
-        execPayload = abi.encodeCall(this.execute, (user));
+        if (!canExec) return (false, execPayload);
 
+        // Additional checks
+        // Check the the RP contract has enough allowance to pay for the RP
+        uint256 allowance = IERC20(recurringPayment.paymentType.tokenAddress).allowance(user, address(this));
+        if (allowance < recurringPayment.recurringAmount) return (false, execPayload);
+
+        // Check that the user has enough balance to pay for the RP
+        uint256 balance = IERC20(recurringPayment.paymentType.tokenAddress).balanceOf(user);
+        if (balance < recurringPayment.recurringAmount) return (false, execPayload);
+
+        execPayload = abi.encodeCall(this.execute, (user));
         return (canExec, execPayload);
     }
 
