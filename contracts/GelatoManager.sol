@@ -75,7 +75,7 @@ contract GelatoManager is AutomateTaskCreator, Governed {
         address _governor,
         uint256 _maxGasPrice
     ) AutomateTaskCreator(_automate, _governor) Governed(_governor) {
-        maxGasPrice = _maxGasPrice;
+        _setMaxGasPrice(_maxGasPrice);
     }
 
     /**
@@ -102,9 +102,7 @@ contract GelatoManager is AutomateTaskCreator, Governed {
      * @param newGasPrice The updated value for `maxGasPrice`
      */
     function setMaxGasPrice(uint256 newGasPrice) external onlyGovernor {
-        if (newGasPrice == 0) revert GasPriceCannotBeZero();
-        maxGasPrice = newGasPrice;
-        emit MaxGasPriceSet(maxGasPrice);
+        _setMaxGasPrice(newGasPrice);
     }
 
     /**
@@ -148,5 +146,11 @@ contract GelatoManager is AutomateTaskCreator, Governed {
     function _cancelResolverTask(bytes32 taskId) internal {
         _cancelTask(taskId);
         emit ResolverTaskCancelled(taskId);
+    }
+
+    function _setMaxGasPrice(uint256 newGasPrice) internal {
+        if (newGasPrice == 0) revert GasPriceCannotBeZero();
+        maxGasPrice = newGasPrice;
+        emit MaxGasPriceSet(maxGasPrice);
     }
 }
