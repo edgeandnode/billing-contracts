@@ -86,7 +86,18 @@ describe('RecurringPayments: Contract', () => {
 
     it('should set the executionInterval', async function () {
       // Create recurring payment, need to check executionInterval stays the same after updating the global value
-      await createRP(user1, user1.address, recurringPayments, token, 'Billing1.0', zero, oneHundred, zero, createData)
+      await token.connect(user1.signer).approve(recurringPayments.address, oneHundred)
+      await createRP(
+        user1,
+        user1.address,
+        recurringPayments,
+        token,
+        'Billing1.0',
+        zero,
+        oneHundred,
+        oneHundred,
+        createData,
+      )
       const beforeExecutionInterval = await recurringPayments.executionInterval()
 
       const tx = recurringPayments.connect(governor.signer).setExecutionInterval(newExecutionInterval)
