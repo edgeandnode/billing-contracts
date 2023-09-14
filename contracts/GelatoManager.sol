@@ -80,6 +80,8 @@ contract GelatoManager is AutomateTaskCreator, Governed {
 
     /**
      * @notice Deposit eth into the Gelato Network treasury
+     * This function is NOT meant to be used by the end user, only by the contract operator
+     * Any funds deposited via this call will be used to pay for Gelato Network tasks
      */
     function deposit() external payable {
         if (msg.value == 0) revert InvalidDepositAmount();
@@ -133,7 +135,7 @@ contract GelatoManager is AutomateTaskCreator, Governed {
         moduleData.modules[0] = Module.RESOLVER;
         moduleData.args[0] = _resolverModuleArg(resolverAddress, resolverData);
 
-        bytes32 taskId = _createTask(execAddress, execDataOrSelector, moduleData, address(0));
+        bytes32 taskId = _createTask(execAddress, execDataOrSelector, moduleData, ETH);
         emit ResolverTaskCreated(taskId);
 
         return taskId;
