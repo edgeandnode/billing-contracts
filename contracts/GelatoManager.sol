@@ -148,6 +148,10 @@ contract GelatoManager is AutomateTaskCreator, Governed {
         emit ResolverTaskCancelled(taskId);
     }
 
+    /**
+     * @notice Sets the maximum gas price for task execution
+     * @param newGasPrice The updated value for `maxGasPrice`
+     */
     function _setMaxGasPrice(uint256 newGasPrice) internal {
         if (newGasPrice == 0) revert GasPriceCannotBeZero();
         maxGasPrice = newGasPrice;
