@@ -228,7 +228,7 @@ contract Subscriptions is Ownable {
         require(sub.rate != 0, "cannot extend a zero rate subscription");
         require(amount % sub.rate == 0, "amount not multiple of rate");
 
-        uint64 newEnd = uint64(Math.max(sub.end, block.timestamp)) + uint64(Math.ceilDiv(amount, sub.rate));
+        uint64 newEnd = uint64(Math.max(sub.end, block.timestamp)) + uint64(amount / sub.rate);
 
         _setEpochs(sub.start, sub.end, -int128(sub.rate));
         _setEpochs(sub.start, newEnd, int128(sub.rate));
