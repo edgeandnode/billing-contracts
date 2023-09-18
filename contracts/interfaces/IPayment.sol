@@ -16,9 +16,8 @@ interface IPayment {
      * @dev If the payment contract requires it, ensure IERC20.approve() is called
      * @param user Address of the user account
      * @param createData Encoded parameters required to create the payment on the target payment system.
-     * @return amount The amount of tokens pulled by the payment contract
      */
-    function create(address user, bytes calldata createData) external returns (uint256 amount);
+    function create(address user, bytes calldata createData) external;
 
     /**
      * @notice Tops up a user account with the specified `amount`.

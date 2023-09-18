@@ -207,9 +207,9 @@ contract Subscriptions is Ownable {
     /// @dev Note that this function does not protect user against a start time in the past.
     /// @param user Subscription owner.
     /// @param data Encoded start, end and rate for the new subscription.
-    function create(address user, bytes calldata data) public onlyRecurringPayments returns (uint256) {
+    function create(address user, bytes calldata data) public onlyRecurringPayments {
         (uint64 start, uint64 end, uint128 rate) = abi.decode(data, (uint64, uint64, uint128));
-        return _subscribe(user, start, end, rate);
+        _subscribe(user, start, end, rate);
     }
 
     /// @notice Extends a subscription's end time.
@@ -323,7 +323,7 @@ contract Subscriptions is Ownable {
     /// @param start Start timestamp for the new subscription.
     /// @param end End timestamp for the new subscription.
     /// @param rate Rate for the new subscription.
-    function _subscribe(address user, uint64 start, uint64 end, uint128 rate) private returns (uint256) {
+    function _subscribe(address user, uint64 start, uint64 end, uint128 rate) private {
         require(user != address(0), "user is null");
         require(user != address(this), "invalid user");
         require(start < end, "start must be less than end");
@@ -355,8 +355,6 @@ contract Subscriptions is Ownable {
 
         uint256 epoch = currentEpoch();
         emit Subscribe(user, epoch, start, end, rate);
-
-        return subTotal;
     }
 
     /// @notice Remove the user's subscription. Unlocked tokens will be transfered to the user.
