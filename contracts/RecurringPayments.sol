@@ -285,11 +285,7 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
         // If user is calling we allow early execution and don't automatically cancel even if expiration time has passed
         if (user != msg.sender) {
             // Cancel the recurring payment if it has failed for long enough
-<<<<<<< HEAD
             if (_canCancel(recurringPayment.lastExecutedAt, expirationInterval)) {
-=======
-            if (_canCancel(recurringPayment.lastExecutedAt, recurringPayment.expirationInterval)) {
->>>>>>> a244f10 (fix: store execution and expiration intervals in rp struct)
                 _cancel(user, true);
                 return;
             }
@@ -444,8 +440,7 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
      */
     function getExpirationTime(address user) external view returns (uint256) {
         RecurringPayment storage recurringPayment = _getRecurringPaymentOrRevert(user);
-        return
-            BokkyPooBahsDateTimeLibrary.addMonths(recurringPayment.lastExecutedAt, recurringPayment.expirationInterval);
+        return BokkyPooBahsDateTimeLibrary.addMonths(recurringPayment.lastExecutedAt, expirationInterval);
     }
 
     /**
