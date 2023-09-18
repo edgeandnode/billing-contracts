@@ -99,17 +99,10 @@ describe('RecurringPayments: Contract', () => {
     })
 
     it('should set the expirationInterval', async function () {
-      // Create recurring payment, need to check executionInterval stays the same after updating the global value
-      await createRP(user1, user1.address, recurringPayments, token, 'Billing1.0', zero, oneHundred, zero, createData)
-      const beforeExpirationInterval = await recurringPayments.expirationInterval()
-
       const tx = recurringPayments.connect(governor.signer).setExpirationInterval(newExpirationInterval)
 
       await expect(tx).to.emit(recurringPayments, 'ExpirationIntervalSet').withArgs(newExpirationInterval)
       expect(await recurringPayments.expirationInterval()).to.eq(newExpirationInterval)
-
-      const recurringPayment = await recurringPayments.recurringPayments(user1.address)
-      expect(recurringPayment.expirationInterval).eq(beforeExpirationInterval)
     })
   })
 
