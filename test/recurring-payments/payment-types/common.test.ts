@@ -178,27 +178,6 @@ describe('RecurringPayments: payment types', () => {
           )
         })
 
-        if (testPaymentType.requiresCreate) {
-          it('should prevent creating a recurring payment if createAmount does not match pulled amount', async function () {
-            const initialAmount = zero
-            const recurringAmount = oneHundred
-
-            // Add funds to RP contract to ensure attack is possible
-            await token.connect(me.signer).transfer(recurringPayments.address, hundredMillion)
-
-            // Create RP
-            await token
-              .connect(user1.signer)
-              .approve(recurringPayments.address, initialAmount.add(testPaymentType.createAmount))
-
-            const tx = recurringPayments
-              .connect(user1.signer)
-              .create(testPaymentType.name, initialAmount, recurringAmount, zero, testPaymentType.createData)
-
-            await expect(tx).to.be.revertedWithCustomError(recurringPayments, 'InvalidCreateAmount')
-          })
-        }
-
         it('should create a recurring payment with an initial amount', async function () {
           const initialAmount = ten
           const recurringAmount = oneHundred

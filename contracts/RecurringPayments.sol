@@ -138,8 +138,8 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
     /// @dev Thrown when trying to retrieve a non existing recurring payment
     error NoRecurringPaymentFound();
 
-    /// @dev Thrown when create call on a payment contract pulls an amount different than `createAmount`
-    error InvalidCreateAmount();
+    /// @dev Thrown when the contract balance changes unexpectedly
+    error BalanceMismatch();
 
     /**
      * @dev Thrown when attempting to execute a recurring payment before `executionInterval` has passed
@@ -223,17 +223,25 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
             paymentType
         );
 
-        // Create account if payment type requires it
-        if (paymentType.requiresAccountCreation) {
-            if (createAmount > 0) paymentType.tokenAddress.safeTransferFrom(user, address(this), createAmount);
-            uint256 pulledAmount = IPayment(paymentType.contractAddress).create(user, createData);
-            if (pulledAmount != createAmount) revert InvalidCreateAmount();
-        }
+        {
+            // Snapshot balance
+            uint256 balanceBefore = paymentType.tokenAddress.balanceOf(address(this));
 
-        // Add the initial amount to the user account
-        if (initialAmount > 0) {
-            paymentType.tokenAddress.safeTransferFrom(user, address(this), initialAmount);
-            IPayment(paymentType.contractAddress).addTo(user, initialAmount);
+            // Create account if payment type requires it
+            if (paymentType.requiresAccountCreation) {
+                if (createAmount > 0) paymentType.tokenAddress.safeTransferFrom(user, address(this), createAmount);
+                IPayment(paymentType.contractAddress).create(user, createData);
+            }
+
+            // Add the initial amount to the user account
+            if (initialAmount > 0) {
+                paymentType.tokenAddress.safeTransferFrom(user, address(this), initialAmount);
+                IPayment(paymentType.contractAddress).addTo(user, initialAmount);
+            }
+
+            // Ensure contract balance didn't change after external calls
+            uint256 balanceAfter = paymentType.tokenAddress.balanceOf(address(this));
+            if (balanceAfter != balanceBefore) revert BalanceMismatch();
         }
 
         emit RecurringPaymentCreated(
@@ -302,10 +310,18 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
 
         recurringPayment.lastExecutedAt = block.timestamp;
 
-        // Draw funds from the user wallet and immediately use them to top up their account
         PaymentType memory paymentType = recurringPayment.paymentType;
+
+        // Snapshot balance
+        uint256 balanceBefore = paymentType.tokenAddress.balanceOf(address(this));
+
+        // Draw funds from the user wallet and immediately use them to top up their account
         paymentType.tokenAddress.safeTransferFrom(user, address(this), recurringPayment.recurringAmount);
         paymentType.contractAddress.addTo(user, recurringPayment.recurringAmount);
+
+        // Ensure contract balance didn't change after external calls
+        uint256 balanceAfter = paymentType.tokenAddress.balanceOf(address(this));
+        if (balanceAfter != balanceBefore) revert BalanceMismatch();
 
         emit RecurringPaymentExecuted(user, recurringPayment.taskId);
     }
