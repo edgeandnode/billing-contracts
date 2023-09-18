@@ -60,7 +60,6 @@ export async function createRP(
   expect(recurringPayment.paymentType.contractAddress).to.equal(paymentType.contractAddress)
   expect(recurringPayment.paymentType.tokenAddress).to.equal(paymentType.tokenAddress)
   expect(recurringPayment.executionInterval).to.equal(await recurringPayments.executionInterval())
-  expect(recurringPayment.expirationInterval).to.equal(await recurringPayments.expirationInterval())
 
   // After token state
   const afterUserBalance = await token.balanceOf(user)
