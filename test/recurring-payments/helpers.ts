@@ -54,7 +54,7 @@ export async function createRP(
 
   expect(recurringPayment.recurringAmount).to.equal(recurringAmount)
   expect(recurringPayment.createdAt).to.equal(receiptTimestamp)
-  expect(recurringPayment.lastExecutedAt).to.equal(0)
+  expect(recurringPayment.lastExecutedAt).to.equal(receiptTimestamp)
   expect(recurringPayment.paymentType.id).to.equal(paymentType.id)
   expect(recurringPayment.paymentType.name).to.equal(paymentType.name)
   expect(recurringPayment.paymentType.contractAddress).to.equal(paymentType.contractAddress)

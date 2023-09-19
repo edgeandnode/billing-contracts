@@ -303,9 +303,6 @@ describe('RecurringPayments: payment types', () => {
           const recurringAmount = testPaymentType.recurringAmount ?? oneHundred
           await token.connect(user1.signer).approve(recurringPayments.address, recurringAmount.mul(times + 1))
 
-          // Execute once to set lastExecutedAt to a non-zero value
-          await executeRP(me, user1.address, recurringPayments, token)
-
           // Time travel to next execution time and execute it a few times
           for (let index = 0; index < times; index++) {
             await time.increaseTo(await recurringPayments.getNextExecutionTime(user1.address))
@@ -317,9 +314,6 @@ describe('RecurringPayments: payment types', () => {
           const recurringAmount = testPaymentType.recurringAmount ?? oneHundred
           await token.connect(user1.signer).approve(recurringPayments.address, recurringAmount)
 
-          // Execute once to set lastExecutedAt to a non-zero value
-          await executeRP(me, user1.address, recurringPayments, token)
-
           const tx = recurringPayments.connect(me.signer).execute(user1.address)
           await expect(tx).to.be.revertedWithCustomError(recurringPayments, 'RecurringPaymentInCooldown')
         })
@@ -328,17 +322,12 @@ describe('RecurringPayments: payment types', () => {
           const recurringAmount = testPaymentType.recurringAmount ?? oneHundred
           await token.connect(user1.signer).approve(recurringPayments.address, recurringAmount.mul(2))
 
-          // Execute once to set lastExecutedAt to a non-zero value
-          await executeRP(me, user1.address, recurringPayments, token)
           await executeRP(user1, user1.address, recurringPayments, token)
         })
 
         it('should cancel the recurring payment if expiration time has passed', async function () {
           const recurringAmount = testPaymentType.recurringAmount ?? oneHundred
           await token.connect(user1.signer).approve(recurringPayments.address, recurringAmount)
-
-          // Execute once to set lastExecutedAt to a non-zero value
-          await executeRP(me, user1.address, recurringPayments, token)
 
           const recurringPayment = await recurringPayments.recurringPayments(user1.address)
 
@@ -355,9 +344,6 @@ describe('RecurringPayments: payment types', () => {
         it('should not cancel the recurring payment if expiration time has passed but the caller is the owner', async function () {
           const recurringAmount = testPaymentType.recurringAmount ?? oneHundred
           await token.connect(user1.signer).approve(recurringPayments.address, recurringAmount.mul(2))
-
-          // Execute once to set lastExecutedAt to a non-zero value
-          await executeRP(me, user1.address, recurringPayments, token)
 
           await time.increaseTo(await recurringPayments.getExpirationTime(user1.address))
           try {
@@ -394,9 +380,7 @@ describe('RecurringPayments: payment types', () => {
         })
 
         it('should allow execution when executionInterval has passed', async function () {
-          // Execute once to set lastExecutedAt to a non-zero value
-          await executeRP(me, user1.address, recurringPayments, token)
-          await time.increaseTo(await recurringPayments.getExpirationTime(user1.address))
+          await time.increaseTo(await recurringPayments.getNextExecutionTime(user1.address))
 
           const [canExec, execPayload] = await recurringPayments.connect(me.signer).check(user1.address)
           expect(canExec).to.be.true
@@ -404,9 +388,6 @@ describe('RecurringPayments: payment types', () => {
         })
 
         it('should not allow execution when executionInterval has not passed', async function () {
-          // Execute once to set lastExecutedAt to a non-zero value
-          await executeRP(me, user1.address, recurringPayments, token)
-
           const [canExec, execPayload] = await recurringPayments.connect(me.signer).check(user1.address)
           expect(canExec).to.be.false
           expect(execPayload).to.eq(buildCheckExecPayload(user1.address))
