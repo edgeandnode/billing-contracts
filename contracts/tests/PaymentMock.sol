@@ -16,13 +16,58 @@ contract PaymentMock is IPayment {
     }
 
     function create(address user, bytes calldata data) external override {
-        address _user = abi.decode(data, (address));
+        (address _user, uint256 _amount) = abi.decode(data, (address, uint256));
+        require(_user == user, "PaymentMock: user address mismatch");
+        token.transferFrom(msg.sender, address(this), _amount);
+    }
+
+    function addTo(address user, uint256 amount) external override {
+        balances[user] += amount;
+        token.transferFrom(msg.sender, address(this), amount);
+    }
+}
+
+/**
+ * @title Payment contract mock
+ */
+contract PaymentMockNoTransferOnCreate is IPayment {
+    IERC20 public token;
+    mapping(address user => uint256) public balances;
+
+    constructor(address _token) {
+        token = IERC20(_token);
+    }
+
+    function create(address user, bytes calldata data) external override {
+        (address _user, uint256 _amount) = abi.decode(data, (address, uint256));
         require(_user == user, "PaymentMock: user address mismatch");
     }
 
     function addTo(address user, uint256 amount) external override {
         balances[user] += amount;
         token.transferFrom(msg.sender, address(this), amount);
+    }
+}
+
+/**
+ * @title Payment contract mock
+ */
+contract PaymentMockNoTransferOnAddTo is IPayment {
+    IERC20 public token;
+    mapping(address user => uint256) public balances;
+
+    constructor(address _token) {
+        token = IERC20(_token);
+    }
+
+    function create(address user, bytes calldata data) external override {
+        (address _user, uint256 _amount) = abi.decode(data, (address, uint256));
+        require(_user == user, "PaymentMock: user address mismatch");
+        token.transferFrom(msg.sender, address(this), _amount);
+    }
+
+    function addTo(address user, uint256 amount) external override {
+        balances[user] += amount;
     }
 }
 

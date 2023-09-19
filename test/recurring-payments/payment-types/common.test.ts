@@ -38,6 +38,7 @@ describe('RecurringPayments: payment types', () => {
   const ten = toGRT('10')
   const oneHundred = toGRT('100')
   const oneMillion = toGRT('1000000')
+  const hundredMillion = toGRT('100000000')
   const oneBillion = toGRT('1000000000')
   const tenBillion = toGRT('10000000000')
 
@@ -113,8 +114,9 @@ describe('RecurringPayments: payment types', () => {
     await setBalance(governor.address, oneHundred)
 
     // Init payment type array
-    createData = ethers.utils.defaultAbiCoder.encode(['address'], [user1.address])
+    createData = ethers.utils.defaultAbiCoder.encode(['address', 'uint256'], [user1.address, ten])
     testPaymentTypes[0].createData = createData
+    testPaymentTypes[0].createAmount = ten
     testPaymentTypes[0].contractAddress = payment.address
     testPaymentTypes[1].contractAddress = billing.address
     testPaymentTypes[2].contractAddress = subscriptions.address
