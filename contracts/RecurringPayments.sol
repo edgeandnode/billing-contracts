@@ -95,7 +95,13 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
      * @param contractAddress Address of the contract implementing the payment type
      * @param tokenAddress Address of the token used by the implementing payment contract
      */
-    event PaymentTypeRegistered(uint256 indexed id, string indexed name, address contractAddress, address tokenAddress);
+    event PaymentTypeRegistered(
+        uint256 indexed id,
+        uint256 minimumRecurringAmount,
+        string indexed name,
+        address contractAddress,
+        address tokenAddress
+    );
 
     /**
      * @dev Emitted when a payment type is unregistered
@@ -104,10 +110,21 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
      */
     event PaymentTypeUnregistered(uint256 indexed id, string indexed name);
 
+    /**
+     * @dev Emitted when a minimum recurring amount is updated for a payment type
+     * @param id Id of the payment type
+     * @param name Name of the payment type
+     * @param minimumRecurringAmount New minimum recurring amount
+     */
+    event MinimumRecurringAmountSet(uint256 indexed id, string indexed name, uint256 minimumRecurringAmount);
+
     // -- Errors --
 
     /// @dev Thrown when a zero amount is passed in as an argument and not allowed
     error InvalidZeroAmount();
+
+    /// @dev Thrown when the recurring amount provided is less than the minimum allowed for the payment type
+    error RecurringAmountTooLow();
 
     /// @dev Thrown when a provided address argument is not a contract
     error AddressNotAContract();
@@ -178,6 +195,7 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
         if (recurringAmount == 0) revert InvalidZeroAmount();
 
         PaymentType memory paymentType = _getPaymentTypeOrRevert(paymentTypeName);
+        if (recurringAmount < paymentType.minimumRecurringAmount) revert RecurringAmountTooLow();
 
         // Make sure we only have one recurring payment per user
         address user = msg.sender;
@@ -230,11 +248,21 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
 
     /**
      * @notice Cancel a recurring payment for the calling user.
-     * This will only cancell the recurring payment task, the user's balance in the target payment contract will
+     * This will only cancel the recurring payment task, the user's balance in the target payment contract will
      * remain untouched.
      */
     function cancel() external {
         _cancel(msg.sender, false);
+    }
+
+    /**
+     * @notice Cancel a recurring payment for the calling user.
+     * This will only cancel the recurring payment task, the user's balance in the target payment contract will
+     * remain untouched.
+     * @param user User address
+     */
+    function cancel(address user) external onlyGovernor {
+        _cancel(user, false);
     }
 
     /**
@@ -253,7 +281,6 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
         checkGasPrice(); // Revert if gas price is too high
 
         RecurringPayment storage recurringPayment = _getRecurringPaymentOrRevert(user);
-        PaymentType memory paymentType = recurringPayment.paymentType;
 
         // If user is calling we allow early execution and don't automatically cancel even if expiration time has passed
         if (user != msg.sender) {
@@ -271,6 +298,7 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
         recurringPayment.lastExecutedAt = block.timestamp;
 
         // Draw funds from the user wallet and immediately use them to top up their account
+        PaymentType memory paymentType = recurringPayment.paymentType;
         paymentType.tokenAddress.safeTransferFrom(user, address(this), recurringPayment.recurringAmount);
         paymentType.contractAddress.addTo(user, recurringPayment.recurringAmount);
 
@@ -289,6 +317,7 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
      */
     function registerPaymentType(
         string calldata name,
+        uint256 minimumRecurringAmount,
         address contractAddress,
         address tokenAddress,
         bool requiresAccountCreation
@@ -304,6 +333,7 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
 
         paymentTypes[id] = PaymentType(
             id,
+            minimumRecurringAmount,
             IPayment(contractAddress),
             IERC20(tokenAddress),
             requiresAccountCreation,
@@ -313,7 +343,7 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
         // Grant target payment contract allowance to pull from the recurring payments contract
         IERC20(tokenAddress).approve(contractAddress, type(uint256).max);
 
-        emit PaymentTypeRegistered(id, name, contractAddress, tokenAddress);
+        emit PaymentTypeRegistered(id, minimumRecurringAmount, name, contractAddress, tokenAddress);
     }
 
     /**
@@ -330,6 +360,18 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
         // Revoke allowance
         IERC20(paymentType.tokenAddress).approve(address(paymentType.contractAddress), 0);
         emit PaymentTypeUnregistered(paymentType.id, name);
+    }
+
+    /**
+     * @notice Sets the minimum recurring amount for a payment type.
+     * @param name The name of the payment type to update. Must exist.
+     * @param minimumRecurringAmount The new minimum recurring amount.
+     */
+    function setMinimumRecurringAmount(string calldata name, uint256 minimumRecurringAmount) external onlyGovernor {
+        PaymentType storage paymentType = _getPaymentTypeOrRevert(name);
+        paymentType.minimumRecurringAmount = minimumRecurringAmount;
+
+        emit MinimumRecurringAmountSet(paymentType.id, paymentType.name, minimumRecurringAmount);
     }
 
     /**

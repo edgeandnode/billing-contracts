@@ -34,6 +34,7 @@ describe('RecurringPayments: payment types', () => {
   const emptyData = ethers.utils.defaultAbiCoder.encode([], [])
 
   const zero = toGRT('0')
+  const five = toGRT('5')
   const ten = toGRT('10')
   const oneHundred = toGRT('100')
   const oneMillion = toGRT('1000000')
@@ -130,6 +131,7 @@ describe('RecurringPayments: payment types', () => {
           .connect(governor.signer)
           .registerPaymentType(
             testPaymentType.name,
+            ten,
             testPaymentType.contractAddress,
             token.address,
             testPaymentType.requiresCreate,
@@ -145,6 +147,11 @@ describe('RecurringPayments: payment types', () => {
         it('should revert if payment type does not exist', async function () {
           const tx = recurringPayments.connect(user1.signer).create('Billing100.0', zero, oneHundred, zero, emptyData)
           await expect(tx).to.be.revertedWithCustomError(recurringPayments, 'PaymentTypeDoesNotExist')
+        })
+
+        it('should revert if recurring amount is too low', async function () {
+          const tx = recurringPayments.connect(user1.signer).create(testPaymentType.name, zero, five, zero, emptyData)
+          await expect(tx).to.be.revertedWithCustomError(recurringPayments, 'RecurringAmountTooLow')
         })
 
         it('should create a recurring payment with no initial amount', async function () {
@@ -225,7 +232,7 @@ describe('RecurringPayments: payment types', () => {
 
       describe('cancel()', function () {
         it('should revert when cancelling a non existent recurring payment', async function () {
-          const tx = recurringPayments.connect(user1.signer).cancel()
+          const tx = recurringPayments.connect(user1.signer)['cancel()']()
           await expect(tx).to.be.revertedWithCustomError(recurringPayments, 'NoRecurringPaymentFound')
         })
 
@@ -250,7 +257,67 @@ describe('RecurringPayments: payment types', () => {
           const beforeRecurringPayment = await recurringPayments.recurringPayments(user1.address)
 
           // Cancel RP
-          const tx = recurringPayments.connect(user1.signer).cancel()
+          const tx = recurringPayments.connect(user1.signer)['cancel()']()
+          await expect(tx)
+            .to.emit(recurringPayments, 'RecurringPaymentCancelled')
+            .withArgs(user1.address, beforeRecurringPayment.taskId, false)
+
+          // Check RP contract state
+          const afterRecurringPayment = await recurringPayments.recurringPayments(user1.address)
+          expect(afterRecurringPayment.recurringAmount).to.equal(0)
+          expect(afterRecurringPayment.createdAt).to.equal(0)
+          expect(afterRecurringPayment.lastExecutedAt).to.equal(0)
+          expect(afterRecurringPayment.paymentType.id).to.equal(0)
+          expect(afterRecurringPayment.paymentType.name).to.equal('')
+          expect(afterRecurringPayment.paymentType.contractAddress).to.equal(ethers.constants.AddressZero)
+          expect(afterRecurringPayment.paymentType.tokenAddress).to.equal(ethers.constants.AddressZero)
+        })
+
+        it('should prevent third parties to cancel an arbitrary recurring payment', async function () {
+          const initialAmount = zero
+          // Create RP
+          await token
+            .connect(user1.signer)
+            .approve(recurringPayments.address, initialAmount.add(testPaymentType.createAmount))
+          await createRP(
+            user1,
+            user1.address,
+            recurringPayments,
+            token,
+            testPaymentType.name,
+            initialAmount,
+            oneHundred,
+            testPaymentType.createAmount,
+            testPaymentType.createData,
+          )
+
+          // Cancel RP
+          const tx = recurringPayments.connect(collector1.signer)['cancel(address)'](user1.address)
+          await expect(tx).to.be.revertedWith('Only Governor can call')
+        })
+
+        it('should allow the governor to cancel any recurring payment', async function () {
+          const initialAmount = zero
+          // Create RP
+          await token
+            .connect(user1.signer)
+            .approve(recurringPayments.address, initialAmount.add(testPaymentType.createAmount))
+          await createRP(
+            user1,
+            user1.address,
+            recurringPayments,
+            token,
+            testPaymentType.name,
+            initialAmount,
+            oneHundred,
+            testPaymentType.createAmount,
+            testPaymentType.createData,
+          )
+
+          const beforeRecurringPayment = await recurringPayments.recurringPayments(user1.address)
+
+          // Cancel RP
+          const tx = recurringPayments.connect(governor.signer)['cancel(address)'](user1.address)
           await expect(tx)
             .to.emit(recurringPayments, 'RecurringPaymentCancelled')
             .withArgs(user1.address, beforeRecurringPayment.taskId, false)
@@ -292,7 +359,7 @@ describe('RecurringPayments: payment types', () => {
         })
 
         it('should revert if user has no recurring payment', async function () {
-          await recurringPayments.connect(user1.signer).cancel()
+          await recurringPayments.connect(user1.signer)['cancel()']()
 
           const tx = recurringPayments.connect(me.signer).execute(user1.address)
           await expect(tx).to.be.revertedWithCustomError(recurringPayments, 'NoRecurringPaymentFound')
@@ -373,7 +440,7 @@ describe('RecurringPayments: payment types', () => {
         })
 
         it('should revert if user has no recurring payment', async function () {
-          await recurringPayments.connect(user1.signer).cancel()
+          await recurringPayments.connect(user1.signer)['cancel()']()
 
           const tx = recurringPayments.connect(me.signer).check(user1.address)
           await expect(tx).to.be.revertedWithCustomError(recurringPayments, 'NoRecurringPaymentFound')
