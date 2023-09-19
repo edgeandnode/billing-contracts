@@ -439,11 +439,12 @@ describe('RecurringPayments: payment types', () => {
           await token.connect(user1.signer).approve(recurringPayments.address, oneMillion)
         })
 
-        it('should revert if user has no recurring payment', async function () {
+        it('should not allow execution if user has no recurring payment', async function () {
           await recurringPayments.connect(user1.signer)['cancel()']()
 
-          const tx = recurringPayments.connect(me.signer).check(user1.address)
-          await expect(tx).to.be.revertedWithCustomError(recurringPayments, 'NoRecurringPaymentFound')
+          const [canExec, execPayload] = await recurringPayments.connect(me.signer).check(user1.address)
+          expect(canExec).to.be.false
+          expect(execPayload).to.eq('0x')
         })
 
         it('should allow execution when executionInterval has passed', async function () {
@@ -457,7 +458,24 @@ describe('RecurringPayments: payment types', () => {
         it('should not allow execution when executionInterval has not passed', async function () {
           const [canExec, execPayload] = await recurringPayments.connect(me.signer).check(user1.address)
           expect(canExec).to.be.false
-          expect(execPayload).to.eq(buildCheckExecPayload(user1.address))
+          expect(execPayload).to.eq('0x')
+        })
+
+        it('should not allow execution if user allowance is not enough', async function () {
+          await token.connect(user1.signer).approve(recurringPayments.address, zero)
+
+          const [canExec, execPayload] = await recurringPayments.connect(me.signer).check(user1.address)
+          expect(canExec).to.be.false
+          expect(execPayload).to.eq('0x')
+        })
+
+        it('should not allow execution if user balance is not enough', async function () {
+          const userBalance = await token.balanceOf(user1.address)
+          await token.connect(user1.signer).transfer(governor.address, userBalance)
+
+          const [canExec, execPayload] = await recurringPayments.connect(me.signer).check(user1.address)
+          expect(canExec).to.be.false
+          expect(execPayload).to.eq('0x')
         })
       })
     })
