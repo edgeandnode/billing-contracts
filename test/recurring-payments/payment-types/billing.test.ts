@@ -36,8 +36,9 @@ describe('RecurringPayments: payment types', () => {
   const tenBillion = toGRT('10000000000')
 
   const initialMaxGasPrice = ethers.utils.parseUnits('3.5', 'gwei')
-  const initialExecutionInterval = 2
-  const initialExpirationInterval = 13
+  const ONE_DAY_IN_SECONDS = 60 * 60 * 24
+  const initialExecutionInterval = 30 * ONE_DAY_IN_SECONDS
+  const initialExpirationInterval = 90 * ONE_DAY_IN_SECONDS
   const tooDamnHighGasPrice = ethers.utils.parseUnits('100', 'gwei')
 
   beforeEach(async function () {

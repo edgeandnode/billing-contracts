@@ -35,8 +35,9 @@ describe('RecurringPayments: payment types', () => {
   const tenBillion = toGRT('10000000000')
 
   const initialMaxGasPrice = ethers.utils.parseUnits('3.5', 'gwei')
-  const initialExecutionInterval = 1
-  const initialExpirationInterval = 6
+  const ONE_DAY_IN_SECONDS = 60 * 60 * 24
+  const initialExecutionInterval = 30 * ONE_DAY_IN_SECONDS
+  const initialExpirationInterval = 90 * ONE_DAY_IN_SECONDS
   const tooDamnHighGasPrice = ethers.utils.parseUnits('100', 'gwei')
   const subscriptionsEpochSeconds = BigNumber.from(100)
 
@@ -86,7 +87,7 @@ describe('RecurringPayments: payment types', () => {
       it('should revert if incorrect createAmount is provided', async function () {
         const now = await latestBlockTimestamp()
         const start = now.add(10)
-        const end = addMonths(now, 1)
+        const end = addMonths(now, 30 * ONE_DAY_IN_SECONDS)
         const rate = toGRT('5')
         const createData = ethers.utils.defaultAbiCoder.encode(['uint64', 'uint64', 'uint128'], [start, end, rate])
 
@@ -104,7 +105,7 @@ describe('RecurringPayments: payment types', () => {
       it('should create a recurring payment with no initial amount', async function () {
         const now = await latestBlockTimestamp()
         const start = now.add(10)
-        const end = addMonths(now, 1)
+        const end = addMonths(now, 30 * ONE_DAY_IN_SECONDS)
         const rate = toGRT('5')
         const createData = ethers.utils.defaultAbiCoder.encode(['uint64', 'uint64', 'uint128'], [start, end, rate])
 
@@ -145,7 +146,7 @@ describe('RecurringPayments: payment types', () => {
       it('should create a recurring payment with an initial amount', async function () {
         const now = await latestBlockTimestamp()
         const start = now.add(10)
-        const end = addMonths(now, 1)
+        const end = addMonths(now, 30 * ONE_DAY_IN_SECONDS)
         const rate = toGRT('5')
         const createData = ethers.utils.defaultAbiCoder.encode(['uint64', 'uint64', 'uint128'], [start, end, rate])
 
@@ -187,12 +188,10 @@ describe('RecurringPayments: payment types', () => {
     })
 
     describe('execute()', function () {
-      beforeEach(async function () {})
-
       it('should allow execution by any party if executionInterval has passed', async function () {
         const now = await latestBlockTimestamp()
         const start = now
-        const end = addMonths(start, 1)
+        const end = addMonths(start, 30 * ONE_DAY_IN_SECONDS)
         const rate = toGRT('5')
         const createData = ethers.utils.defaultAbiCoder.encode(['uint64', 'uint64', 'uint128'], [start, end, rate])
         const createAmount = rate.mul(end.sub(start))
