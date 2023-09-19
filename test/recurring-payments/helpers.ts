@@ -122,6 +122,7 @@ export const latestBlockTimestamp = async () => {
 
 // https://github.com/bokkypoobah/BokkyPooBahsDateTimeLibrary#addmonths
 export const addMonths = (timestamp: BigNumber, months: number): BigNumber => {
+  return timestamp.add(months)
   const date = new Date(timestamp.toNumber() * 1000)
 
   let month = date.getUTCMonth() + months
