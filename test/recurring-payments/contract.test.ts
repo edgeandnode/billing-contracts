@@ -76,11 +76,26 @@ describe('RecurringPayments: Contract', () => {
   })
 
   describe('setters', function () {
+    beforeEach(async function () {
+      const paymentTypeName = 'Billing1.0'
+
+      await recurringPayments
+        .connect(governor.signer)
+        .registerPaymentType(paymentTypeName, payment.address, token.address, true)
+    })
+
     it('should set the executionInterval', async function () {
+      // Create recurring payment, need to check executionInterval stays the same after updating the global value
+      await createRP(user1, user1.address, recurringPayments, token, 'Billing1.0', zero, oneHundred, zero, createData)
+      const beforeExecutionInterval = await recurringPayments.executionInterval()
+
       const tx = recurringPayments.connect(governor.signer).setExecutionInterval(newExecutionInterval)
 
       await expect(tx).to.emit(recurringPayments, 'ExecutionIntervalSet').withArgs(newExecutionInterval)
       expect(await recurringPayments.executionInterval()).to.eq(newExecutionInterval)
+
+      const recurringPayment = await recurringPayments.recurringPayments(user1.address)
+      expect(recurringPayment.executionInterval).to.eq(beforeExecutionInterval)
     })
 
     it('should set the expirationInterval', async function () {
