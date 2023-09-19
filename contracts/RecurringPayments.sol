@@ -10,6 +10,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { GelatoManager } from "./GelatoManager.sol";
 import { Rescuable } from "./Rescuable.sol";
+import { BokkyPooBahsDateTimeLibrary } from "./libs/BokkyPooBahsDateTimeLibrary.sol";
 
 /**
  * @title RecurringPayments contract
@@ -22,10 +23,10 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
 
     // -- State --
 
-    /// @dev Minimum amount of time in seconds between recurring payment executions
+    /// @dev Minimum amount of time in months between recurring payment executions
     uint128 public executionInterval;
 
-    /// @dev Minimum amount of time in seconds before a recurring payment can be cancelled due to failed execution
+    /// @dev Minimum amount of time before a recurring payment can be cancelled due to failed execution
     uint128 public expirationInterval;
 
     /// @dev List of recurring payments by user
@@ -396,7 +397,7 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
 
     /**
      * @notice Sets the minimum execution interval for recurring payments.
-     * @param _executionInterval The new execution interval in seconds. Must be greater than zero.
+     * @param _executionInterval The new execution interval in months. Must be greater than zero.
      */
     function setExecutionInterval(uint128 _executionInterval) external onlyGovernor {
         _setExecutionInterval(_executionInterval);
@@ -406,7 +407,7 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
      * @notice Sets the minimum expiration interval for recurring payments.
      * This is the amount of time that has to pass without successful payment execution before the recurring payment
      * is automatically cancelled.
-     * @param _expirationInterval The new expiration interval in seconds. Must be greater than the `executionInterval`.
+     * @param _expirationInterval The new expiration interval in months. Must be greater than the `executionInterval`.
      */
     function setExpirationInterval(uint128 _expirationInterval) external onlyGovernor {
         _setExpirationInterval(_expirationInterval);
@@ -459,7 +460,8 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
      */
     function getNextExecutionTime(address user) external view returns (uint256) {
         RecurringPayment storage recurringPayment = _getRecurringPaymentOrRevert(user);
-        return recurringPayment.lastExecutedAt + recurringPayment.executionInterval;
+        return
+            BokkyPooBahsDateTimeLibrary.addMonths(recurringPayment.lastExecutedAt, recurringPayment.executionInterval);
     }
 
     /**
@@ -471,7 +473,7 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
      */
     function getExpirationTime(address user) external view returns (uint256) {
         RecurringPayment storage recurringPayment = _getRecurringPaymentOrRevert(user);
-        return recurringPayment.lastExecutedAt + expirationInterval;
+        return BokkyPooBahsDateTimeLibrary.addMonths(recurringPayment.lastExecutedAt, expirationInterval);
     }
 
     /**
@@ -501,7 +503,7 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
 
     /**
      * @notice Sets the minimum execution interval for recurring payments.
-     * @param _executionInterval The new execution interval in seconds. Must be greater than zero.
+     * @param _executionInterval The new execution interval in months. Must be greater than zero.
      */
     function _setExecutionInterval(uint128 _executionInterval) private {
         if (_executionInterval == 0 || expirationInterval <= _executionInterval) revert InvalidIntervalValue();
@@ -513,7 +515,7 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
      * @notice Sets the minimum expiration interval for recurring payments.
      * This is the amount of time that has to pass without successful payment execution before the recurring payment
      * is automatically cancelled.
-     * @param _expirationInterval The new expiration interval in seconds. Must be greater than the `executionInterval`.
+     * @param _expirationInterval The new expiration interval in months. Must be greater than the `executionInterval`.
      */
     function _setExpirationInterval(uint128 _expirationInterval) private {
         if (_expirationInterval == 0 || _expirationInterval <= executionInterval) revert InvalidIntervalValue();
@@ -528,7 +530,7 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
      * @return True if the recurring payment can be executed
      */
     function _canExecute(uint256 lastExecutedAt, uint256 rpExecutionInterval) private view returns (bool) {
-        return block.timestamp >= (lastExecutedAt + rpExecutionInterval);
+        return block.timestamp >= BokkyPooBahsDateTimeLibrary.addMonths(lastExecutedAt, rpExecutionInterval);
     }
 
     /**
@@ -538,7 +540,7 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
      * @return True if the recurring payment can be cancelled
      */
     function _canCancel(uint256 lastExecutedAt, uint256 rpExpirationInterval) private view returns (bool) {
-        return block.timestamp >= (lastExecutedAt + rpExpirationInterval);
+        return block.timestamp >= BokkyPooBahsDateTimeLibrary.addMonths(lastExecutedAt, rpExpirationInterval);
     }
 
     /**

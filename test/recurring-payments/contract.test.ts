@@ -35,11 +35,10 @@ describe('RecurringPayments: Contract', () => {
   const tenBillion = toGRT('10000000000')
 
   const initialMaxGasPrice = ethers.utils.parseUnits('3.5', 'gwei')
-  const ONE_DAY_IN_SECONDS = 60 * 60 * 24
-  const initialExecutionInterval = 30 * ONE_DAY_IN_SECONDS
-  const initialExpirationInterval = 90 * ONE_DAY_IN_SECONDS
-  const newExecutionInterval = 60 * ONE_DAY_IN_SECONDS
-  const newExpirationInterval = 120 * ONE_DAY_IN_SECONDS
+  const initialExecutionInterval = 1
+  const initialExpirationInterval = 6
+  const newExecutionInterval = 2
+  const newExpirationInterval = 4
 
   beforeEach(async function () {
     // eslint-disable-next-line @typescript-eslint/no-extra-semi
@@ -112,7 +111,7 @@ describe('RecurringPayments: Contract', () => {
 
     it('should prevent setting an executionInterval >= expirationInterval', async function () {
       const expirationInterval = await recurringPayments.expirationInterval()
-      const newExecutionInterval = expirationInterval.add(30 * ONE_DAY_IN_SECONDS)
+      const newExecutionInterval = expirationInterval.add(1)
 
       const tx = recurringPayments.connect(governor.signer).setExecutionInterval(newExecutionInterval)
       await expect(tx).to.be.revertedWithCustomError(recurringPayments, 'InvalidIntervalValue')
