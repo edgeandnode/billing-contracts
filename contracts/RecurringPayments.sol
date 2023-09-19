@@ -172,8 +172,8 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
         uint128 _executionInterval,
         uint128 _expirationInterval
     ) GelatoManager(_automate, _governor, _maxGasPrice) {
-        executionInterval = _executionInterval;
-        expirationInterval = _expirationInterval;
+        _setExpirationInterval(_expirationInterval);
+        _setExecutionInterval(_executionInterval);
     }
 
     /**
@@ -473,7 +473,7 @@ contract RecurringPayments is IRecurringPayments, GelatoManager, Rescuable {
      * @param _executionInterval The new execution interval in months. Must be greater than zero.
      */
     function _setExecutionInterval(uint128 _executionInterval) private {
-        if (_executionInterval == 0) revert InvalidIntervalValue();
+        if (_executionInterval == 0 || expirationInterval <= _executionInterval) revert InvalidIntervalValue();
         executionInterval = _executionInterval;
         emit ExecutionIntervalSet(_executionInterval);
     }

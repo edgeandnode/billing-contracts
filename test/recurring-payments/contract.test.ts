@@ -98,11 +98,27 @@ describe('RecurringPayments: Contract', () => {
       expect(recurringPayment.executionInterval).to.eq(beforeExecutionInterval)
     })
 
+    it('should prevent setting an executionInterval >= expirationInterval', async function () {
+      const expirationInterval = await recurringPayments.expirationInterval()
+      const newExecutionInterval = expirationInterval.add(1)
+
+      const tx = recurringPayments.connect(governor.signer).setExecutionInterval(newExecutionInterval)
+      await expect(tx).to.be.revertedWithCustomError(recurringPayments, 'InvalidIntervalValue')
+    })
+
     it('should set the expirationInterval', async function () {
       const tx = recurringPayments.connect(governor.signer).setExpirationInterval(newExpirationInterval)
 
       await expect(tx).to.emit(recurringPayments, 'ExpirationIntervalSet').withArgs(newExpirationInterval)
       expect(await recurringPayments.expirationInterval()).to.eq(newExpirationInterval)
+    })
+
+    it('should prevent setting an expirationInterval <= expirationInterval', async function () {
+      const executionInterval = await recurringPayments.executionInterval()
+      const newExpirationInterval = executionInterval.sub(1)
+
+      const tx = recurringPayments.connect(governor.signer).setExpirationInterval(newExpirationInterval)
+      await expect(tx).to.be.revertedWithCustomError(recurringPayments, 'InvalidIntervalValue')
     })
   })
 
