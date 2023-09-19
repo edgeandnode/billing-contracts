@@ -44,7 +44,7 @@ describe('RecurringPayments: Contract', () => {
     // eslint-disable-next-line @typescript-eslint/no-extra-semi
     ;[me, governor, gelatoNetwork, user1] = await getAccounts()
 
-    createData = ethers.utils.defaultAbiCoder.encode(['address'], [user1.address])
+    createData = ethers.utils.defaultAbiCoder.encode(['address', 'uint256'], [user1.address, oneHundred])
 
     token = await deployment.deployToken([tenBillion], me.signer, true)
 
@@ -86,7 +86,18 @@ describe('RecurringPayments: Contract', () => {
 
     it('should set the executionInterval', async function () {
       // Create recurring payment, need to check executionInterval stays the same after updating the global value
-      await createRP(user1, user1.address, recurringPayments, token, 'Billing1.0', zero, oneHundred, zero, createData)
+      await token.connect(user1.signer).approve(recurringPayments.address, oneHundred)
+      await createRP(
+        user1,
+        user1.address,
+        recurringPayments,
+        token,
+        'Billing1.0',
+        zero,
+        oneHundred,
+        oneHundred,
+        createData,
+      )
       const beforeExecutionInterval = await recurringPayments.executionInterval()
 
       const tx = recurringPayments.connect(governor.signer).setExecutionInterval(newExecutionInterval)
@@ -144,6 +155,7 @@ describe('RecurringPayments: Contract', () => {
           .registerPaymentType(paymentTypeName, ten, payment.address, token.address, true)
 
         // Create recurring payment
+        await token.connect(user1.signer).approve(recurringPayments.address, oneHundred)
         await createRP(
           user1,
           user1.address,
@@ -152,7 +164,7 @@ describe('RecurringPayments: Contract', () => {
           paymentTypeName,
           zero,
           oneHundred,
-          zero,
+          oneHundred,
           createData,
         )
 
@@ -182,6 +194,7 @@ describe('RecurringPayments: Contract', () => {
           .registerPaymentType(paymentTypeName, ten, payment.address, token.address, true)
 
         // Create recurring payment
+        await token.connect(user1.signer).approve(recurringPayments.address, oneHundred)
         await createRP(
           user1,
           user1.address,
@@ -190,7 +203,7 @@ describe('RecurringPayments: Contract', () => {
           paymentTypeName,
           zero,
           oneHundred,
-          zero,
+          oneHundred,
           createData,
         )
 

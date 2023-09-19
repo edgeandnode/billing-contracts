@@ -142,6 +142,29 @@ export async function deployPaymentMock(
 }
 
 // Pass the args in order to this func
+export async function deployPaymentMockNoTransferOnCreate(
+  args: Array<string | BigNumber>,
+  sender: Signer,
+  disableLogging?: boolean,
+): Promise<PaymentMock> {
+  return deployContract(
+    args,
+    sender,
+    'PaymentMockNoTransferOnCreate',
+    disableLogging,
+  ) as unknown as Promise<PaymentMock>
+}
+
+// Pass the args in order to this func
+export async function deployPaymentMockNoTransferOnAddTo(
+  args: Array<string | BigNumber>,
+  sender: Signer,
+  disableLogging?: boolean,
+): Promise<PaymentMock> {
+  return deployContract(args, sender, 'PaymentMockNoTransferOnAddTo', disableLogging) as unknown as Promise<PaymentMock>
+}
+
+// Pass the args in order to this func
 export async function deploySimplePaymentMock(
   args: Array<string | BigNumber>,
   sender: Signer,
