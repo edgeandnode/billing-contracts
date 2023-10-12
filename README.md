@@ -87,10 +87,11 @@ Use mainnet (or goerli) to deploy BillingConnector:
 
 ```
 hh deploy-billing-connector --network mainnet \
-    --tokenGateway <L1GRAPHTOKENGATEWAY_ADDRESS> \
+    --tokengateway <L1GRAPHTOKENGATEWAY_ADDRESS> \
     --billing <L2_BILLING_ADDRESS> \
     --token <GRT_ADDRESS> \
-    --governor <GOVERNOR_ADDRESS>
+    --governor <GOVERNOR_ADDRESS> \
+    --inbox <ARBITRUM_INBOX_ADDRESS>
 ```
 
 Then run this to verify on Etherscan:
@@ -102,7 +103,8 @@ hh verify --network mainnet \
     <L2_BILLING_ADDRESS> \
     <GRT_ADDRESS> \
     <GOVERNOR_ADDRESS> \
-    <L2GRAPHTOKENGATEWAY_ADDRESS>
+    <L2GRAPHTOKENGATEWAY_ADDRESS> \
+    <ARBITRUM_INBOX_ADDRESS>
 ```
 
 ### BanxaWrapper

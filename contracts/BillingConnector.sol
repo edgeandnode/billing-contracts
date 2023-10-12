@@ -154,7 +154,8 @@ contract BillingConnector is IBillingConnector, Governed, Rescuable, L1ArbitrumM
     }
 
     /**
-     * @notice Add tokens into the billing contract on L2, for any user, using a signed permit
+     * @notice Add tokens into the billing contract on L2 using a signed permit
+     * @dev _user must be the msg.sender
      * @param _user Address of the current owner of the tokens, that will also be the destination in L2
      * @param _amount  Amount of tokens to add
      * @param _maxGas Max gas for the L2 retryable ticket execution
@@ -178,7 +179,8 @@ contract BillingConnector is IBillingConnector, Governed, Rescuable, L1ArbitrumM
     ) external payable override {
         require(_amount != 0, "Must add more than 0");
         require(_user != address(0), "destination != 0");
-        IERC20WithPermit(address(graphToken)).permit(_user, address(this), _amount, _deadline, _v, _r, _s);
+        require(_user == msg.sender, "Only tokens owner can call");
+        _permit(_user, address(this), _amount, _deadline, _v, _r, _s);
         _addToL2(_user, _user, _amount, _maxGas, _gasPriceBid, _maxSubmissionCost);
     }
 
@@ -260,5 +262,39 @@ contract BillingConnector is IBillingConnector, Governed, Rescuable, L1ArbitrumM
         require(_inbox != address(0), "Arbitrum Inbox cannot be zero");
         inbox = _inbox;
         emit ArbitrumInboxUpdated(_inbox);
+    }
+
+    /**
+     * @dev Approve token allowance by validating a message signed by the holder, if permit
+     * fails check for existing allowance before reverting transaction.
+     * @param _owner Address of the token holder
+     * @param _spender Address of the approved spender
+     * @param _value Amount of tokens to approve the spender
+     * @param _deadline Expiration time of the signed permit (if zero, the permit will never expire, so use with caution)
+     * @param _v Signature recovery id
+     * @param _r Signature r value
+     * @param _s Signature s value
+     */
+    function _permit(
+        address _owner,
+        address _spender,
+        uint256 _value,
+        uint256 _deadline,
+        uint8 _v,
+        bytes32 _r,
+        bytes32 _s
+    ) internal {
+        IERC20WithPermit token = IERC20WithPermit(address(graphToken));
+        // Try permit() before allowance check to advance nonce if possible
+        try token.permit(_owner, _spender, _value, _deadline, _v, _r, _s) {
+            return;
+        } catch Error(string memory reason) {
+            // Check for existing allowance before reverting
+            if (token.allowance(_owner, _spender) >= _value) {
+                return;
+            }
+
+            revert(reason);
+        }
     }
 }
