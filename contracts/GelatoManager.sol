@@ -135,7 +135,7 @@ contract GelatoManager is AutomateTaskCreator, Governed {
         moduleData.modules[0] = Module.RESOLVER;
         moduleData.args[0] = _resolverModuleArg(resolverAddress, resolverData);
 
-        bytes32 taskId = _createTask(execAddress, execDataOrSelector, moduleData, ETH);
+        bytes32 taskId = _createTask(execAddress, execDataOrSelector, moduleData, address(0));
         emit ResolverTaskCreated(taskId);
 
         return taskId;
