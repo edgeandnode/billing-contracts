@@ -53,6 +53,41 @@ task('rp:deposit', 'Deposit eth into Gelato treasury')
     console.log('Deposited with tx hash:', receipt.transactionHash)
   })
 
+task('rp:withdraw', 'Withdraw all funds from Gelato treasury').setAction(
+  async (taskArgs, hre: HardhatRuntimeEnvironment) => {
+    const chainId = (hre.network.config.chainId as number).toString()
+    const rpAddress = addresses[chainId]['RecurringPayments']
+
+    const artifact = loadArtifact('RecurringPayments')
+    const recurringPayments = new ethers.Contract(rpAddress, artifact.abi, hre.ethers.provider) as RecurringPayments
+
+    const treasuryAddress = await recurringPayments.taskTreasury()
+    const TREASURY_ABI = [
+      {
+        inputs: [
+          { internalType: 'address', name: '_user', type: 'address' },
+          { internalType: 'address', name: '_token', type: 'address' },
+        ],
+        name: 'userTokenBalance',
+        outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
+        stateMutability: 'view',
+        type: 'function',
+      },
+    ]
+    const treasury = new ethers.Contract(treasuryAddress, TREASURY_ABI, hre.ethers.provider)
+
+    const accounts = await hre.ethers.getSigners()
+    const userBalance = await treasury.userTokenBalance(
+      recurringPayments.address,
+      '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
+    )
+    console.log(`Withdrawing ${ethers.utils.formatEther(userBalance)} ETH ...`)
+    const tx = await recurringPayments.connect(accounts[0]).withdraw(accounts[0].address, userBalance)
+    const receipt = await tx.wait()
+    console.log('Withdrawn with tx hash:', receipt.transactionHash)
+  },
+)
+
 const ERC20_APPROVE_ABI = [
   {
     inputs: [
@@ -123,4 +158,50 @@ task('rp:setup', 'Create a recurring payment')
     const receipt = await tx.wait()
 
     console.log('Created with tx hash:', receipt.transactionHash)
+  })
+
+task('rp:cancel', 'Cancel a recurring payment')
+  .addParam('privateKey', 'Account private key')
+  .setAction(async (taskArgs, hre: HardhatRuntimeEnvironment) => {
+    const chainId = (hre.network.config.chainId as number).toString()
+    const rpAddress = addresses[chainId]['RecurringPayments']
+
+    const artifact = loadArtifact('RecurringPayments')
+    const recurringPayments = new ethers.Contract(rpAddress, artifact.abi, hre.ethers.provider) as RecurringPayments
+
+    const account = new ethers.Wallet(taskArgs.privateKey, hre.ethers.provider)
+
+    console.log(`Cancelling recurring payment`)
+    console.log(`  - account: ${account.address}`)
+
+    const tx = await recurringPayments.connect(account)['cancel()']()
+    const receipt = await tx.wait()
+
+    console.log('Cancelled with tx hash:', receipt.transactionHash)
+  })
+
+task('rp:execute', 'Execute a recurring payment. Only owner can call.')
+  .addParam('privateKey', 'Account private key')
+  .setAction(async (taskArgs, hre: HardhatRuntimeEnvironment) => {
+    const chainId = (hre.network.config.chainId as number).toString()
+    const rpAddress = addresses[chainId]['RecurringPayments']
+
+    const artifact = loadArtifact('RecurringPayments')
+    const recurringPayments = new ethers.Contract(rpAddress, artifact.abi, hre.ethers.provider) as RecurringPayments
+
+    const account = new ethers.Wallet(taskArgs.privateKey, hre.ethers.provider)
+
+    const nextExecutionTime = await recurringPayments.getNextExecutionTime(account.address)
+
+    console.log(`Executing recurring payment`)
+    console.log(`  - account: ${account.address}`)
+    console.log(`  - next execution time: ${new Date(nextExecutionTime.toNumber() * 1000)}`)
+
+    const tx = await recurringPayments.connect(account).execute(account.address)
+    const receipt = await tx.wait()
+
+    console.log('Executed with tx hash:', receipt.transactionHash)
+
+    const newNextExecutionTime = await recurringPayments.getNextExecutionTime(account.address)
+    console.log(`Next execution time is now: ${new Date(newNextExecutionTime.toNumber() * 1000)}`)
   })
