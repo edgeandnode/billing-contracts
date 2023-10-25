@@ -42,11 +42,17 @@ interface NetworkConfig {
 const networkConfigs: NetworkConfig[] = [
   { network: 'mainnet', chainId: 1 },
   { network: 'goerli', chainId: 5 },
+  { network: 'sepolia', chainId: 11155111 },
   { network: 'arbitrum-one', chainId: 42161, url: 'https://arb1.arbitrum.io/rpc' },
   {
     network: 'arbitrum-goerli',
     chainId: 421613,
     url: 'https://goerli-rollup.arbitrum.io/rpc',
+  },
+  {
+    network: 'arbitrum-sepolia',
+    chainId: 421614,
+    url: 'https://sepolia-rollup.arbitrum.io/rpcblock',
   },
   { network: 'polygon', chainId: 137, url: process.env.POLYGON_RPC_URL },
   { network: 'mumbai', chainId: 80001, url: process.env.POLYGON_MUMBAI_RPC_URL },
@@ -112,10 +118,22 @@ const config = {
     apiKey: {
       mainnet: process.env.ETHERSCAN_API_KEY,
       goerli: process.env.ETHERSCAN_API_KEY,
+      sepolia: process.env.ETHERSCAN_API_KEY,
       polygonMumbai: process.env.POLYGONSCAN_API_KEY,
       arbitrumOne: process.env.ARBISCAN_API_KEY,
       arbitrumGoerli: process.env.ARBISCAN_API_KEY,
+      arbitrumSepolia: process.env.ARBISCAN_API_KEY,
     },
+    customChains: [
+      {
+        network: 'arbitrumSepolia',
+        chainId: 421614,
+        urls: {
+          apiURL: 'https://api-sepolia.arbiscan.io/api',
+          browserURL: 'https://sepolia.arbiscan.io',
+        },
+      },
+    ],
   },
   abiExporter: {
     path: './build/abis',
