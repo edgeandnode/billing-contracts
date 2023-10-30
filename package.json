@@ -1,6 +1,6 @@
 {
   "name": "graph-studio-billing-contracts",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Graph Studio Billing Contracts",
   "main": "index.js",
   "scripts": {
