@@ -12,10 +12,10 @@ declare module 'hardhat/types/runtime' {
 }
 
 extendEnvironment((hre: HardhatRuntimeEnvironment) => {
-  const chainId = hre.network.config.chainId
-  const addressBookPath = process.env.ADDRESS_BOOK
+  const chainId = (hre.network.config.chainId as number).toString()
+  const addressBookPath = process.env.ADDRESS_BOOK || 'addresses.json'
   const addresses = getAddressBook(addressBookPath, chainId)
-  const addressBook = addresses[chainId as number]
+  const addressBook = addresses[chainId as unknown as number]
   hre['contracts'] = lazyObject(() => {
     return loadContracts(
       addressBook?.Billing,
