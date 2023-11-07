@@ -2,7 +2,7 @@ import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { extendEnvironment } from 'hardhat/config'
 import { lazyObject } from 'hardhat/plugins'
 
-import addresses from '../addresses.json'
+import { getAddressBook } from '../utils/addressBook'
 import { BillingContracts, loadContracts } from '../utils/contracts'
 
 declare module 'hardhat/types/runtime' {
@@ -12,8 +12,10 @@ declare module 'hardhat/types/runtime' {
 }
 
 extendEnvironment((hre: HardhatRuntimeEnvironment) => {
-  const chainId = hre.network.config.chainId
-  const addressBook = addresses[chainId as number]
+  const chainId = (hre.network.config.chainId as number).toString()
+  const addressBookPath = process.env.ADDRESS_BOOK || 'addresses.json'
+  const addresses = getAddressBook(addressBookPath, chainId)
+  const addressBook = addresses[chainId as unknown as number]
   hre['contracts'] = lazyObject(() => {
     return loadContracts(
       addressBook?.Billing,
