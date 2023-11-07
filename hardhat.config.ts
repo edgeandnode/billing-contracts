@@ -14,12 +14,13 @@ import '@typechain/hardhat'
 import 'hardhat-abi-exporter'
 import '@nomicfoundation/hardhat-chai-matchers'
 import 'solidity-coverage'
+import 'hardhat-storage-layout'
 
 const SKIP_LOAD = process.env.SKIP_LOAD === 'true'
 
 if (!SKIP_LOAD) {
   require('./tasks/extendContracts')
-  ;['deployment', 'ops'].forEach((folder) => {
+  ;['deployment', 'ops', './'].forEach((folder) => {
     const tasksPath = path.join(__dirname, 'tasks', folder)
     fs.readdirSync(tasksPath)
       .filter((pth) => pth.includes('.ts'))
@@ -89,7 +90,7 @@ const config = {
     artifacts: './build/artifacts',
   },
   solidity: {
-    version: '0.8.16',
+    version: '0.8.18',
     settings: {
       optimizer: {
         enabled: true,
@@ -107,6 +108,10 @@ const config = {
       blockGasLimit: 12000000,
       accounts: {
         mnemonic: 'myth like bonus scare over problem client lizard pioneer submit female collect',
+      },
+      forking: {
+        enabled: !!process.env.FORK,
+        url: `https://arb-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_KEY}`,
       },
     },
     ganache: {

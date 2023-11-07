@@ -86,9 +86,5 @@ interface IBillingConnector {
      * @param _token  Token address of the token that was accidentally sent to the contract
      * @param _amount  Amount of tokens to pull
      */
-    function rescueTokens(
-        address _to,
-        address _token,
-        uint256 _amount
-    ) external;
+    function rescueTokens(address _to, address _token, uint256 _amount) external;
 }

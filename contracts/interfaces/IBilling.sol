@@ -42,11 +42,7 @@ interface IBilling {
      * @param _amount Amount of tokens that were transferred
      * @param _data ABI-encoded callhook data: contains address that tokens are being added to
      */
-    function onTokenTransfer(
-        address _from,
-        uint256 _amount,
-        bytes calldata _data
-    ) external;
+    function onTokenTransfer(address _from, uint256 _amount, bytes calldata _data) external;
 
     /**
      * @dev Remove tokens from the billing contract, from L1
@@ -55,11 +51,7 @@ interface IBilling {
      * @param _to Address to send the tokens
      * @param _amount  Amount of tokens to remove
      */
-    function removeFromL1(
-        address _from,
-        address _to,
-        uint256 _amount
-    ) external;
+    function removeFromL1(address _from, address _to, uint256 _amount) external;
 
     /**
      * @dev Add tokens into the billing contract in bulk
@@ -83,11 +75,7 @@ interface IBilling {
      * @param _amount  Amount of tokens to pull
      * @param _to Destination to send pulled tokens
      */
-    function pull(
-        address _user,
-        uint256 _amount,
-        address _to
-    ) external;
+    function pull(address _user, uint256 _amount, address _to) external;
 
     /**
      * @dev Collector pulls tokens from many users in the billing contract
@@ -95,9 +83,5 @@ interface IBilling {
      * @param _amounts  Amounts of tokens to pull from each user
      * @param _to Destination to send pulled tokens
      */
-    function pullMany(
-        address[] calldata _users,
-        uint256[] calldata _amounts,
-        address _to
-    ) external;
+    function pullMany(address[] calldata _users, uint256[] calldata _amounts, address _to) external;
 }

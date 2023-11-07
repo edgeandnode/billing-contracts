@@ -118,15 +118,7 @@ contract L1TokenGatewayMock is Ownable {
      * @return Base ether value required to keep retryable ticket alive
      * @return Additional data sent to L2
      */
-    function parseOutboundData(bytes memory _data)
-        private
-        view
-        returns (
-            address,
-            uint256,
-            bytes memory
-        )
-    {
+    function parseOutboundData(bytes memory _data) private view returns (address, uint256, bytes memory) {
         address from;
         uint256 maxSubmissionCost;
         bytes memory extraData;
