@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.16;
 
-import { IOpsProxyFactory } from "../gelato/Types.sol";
+import { IOpsProxyFactory } from "../../gelato/Types.sol";
 
 /**
  * @title Mock for the Gelato OpsProxyFactory contract
