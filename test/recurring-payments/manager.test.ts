@@ -53,10 +53,6 @@ describe('RecurringPayments: Gelato Manager', () => {
   })
 
   describe('constructor', function () {
-    it('should set gelato funds owner', async function () {
-      expect(await recurringPayments.fundsOwner()).to.eq(governor.address)
-    })
-
     it('should set gelato automate contract address', async function () {
       expect(await recurringPayments.automate()).to.eq(automate.address)
     })
@@ -100,59 +96,6 @@ describe('RecurringPayments: Gelato Manager', () => {
 
     it('gasPrice() should not revert if gas is not high', async function () {
       await expect(recurringPayments.checkGasPrice({ gasPrice: initialMaxGasPrice })).not.to.be.reverted
-    })
-  })
-
-  describe('treasury', function () {
-    it('should revert when depositing zero eth', async function () {
-      const tx = recurringPayments.connect(governor.signer).deposit({ value: 0 })
-      await expect(tx).to.be.revertedWithCustomError(recurringPayments, 'InvalidDepositAmount')
-    })
-
-    it('should allow depositing eth', async function () {
-      const userBalanceBefore = await ethers.provider.getBalance(governor.address)
-      const tx = recurringPayments.connect(governor.signer).deposit({ value: ten })
-
-      await expect(tx).to.emit(recurringPayments, 'TreasuryFundsDeposited').withArgs(governor.address, ten)
-      const receipt = await (await tx).wait()
-
-      const userBalanceAfter = await ethers.provider.getBalance(governor.address)
-      expect(userBalanceAfter).to.eq(userBalanceBefore.sub(ten).sub(receipt.gasUsed.mul((await tx).gasPrice)))
-    })
-
-    it('should allow anyone to deposit', async function () {
-      const userBalanceBefore = await ethers.provider.getBalance(user1.address)
-      const tx = recurringPayments.connect(user1.signer).deposit({ value: ten })
-
-      await expect(tx).to.emit(recurringPayments, 'TreasuryFundsDeposited').withArgs(user1.address, ten)
-      const receipt = await (await tx).wait()
-
-      const userBalanceAfter = await ethers.provider.getBalance(user1.address)
-      expect(userBalanceAfter).to.eq(userBalanceBefore.sub(ten).sub(receipt.gasUsed.mul((await tx).gasPrice)))
-    })
-
-    it('should allow governor to withdraw', async function () {
-      const userBalanceBefore = await ethers.provider.getBalance(governor.address)
-
-      // Deposit
-      const tx = recurringPayments.connect(governor.signer).deposit({ value: ten })
-      await expect(tx).to.emit(recurringPayments, 'TreasuryFundsDeposited').withArgs(governor.address, ten)
-      const receipt = await (await tx).wait()
-
-      // Withdraw
-      const tx2 = recurringPayments.connect(governor.signer).withdraw(governor.address, ten)
-      await expect(tx2).to.emit(recurringPayments, 'TreasuryFundsWithdrawn').withArgs(governor.address, ten)
-      const receipt2 = await (await tx2).wait()
-
-      const userBalanceAfter = await ethers.provider.getBalance(governor.address)
-      expect(userBalanceAfter).to.eq(
-        userBalanceBefore.sub(receipt.gasUsed.mul((await tx).gasPrice)).sub(receipt2.gasUsed.mul((await tx2).gasPrice)),
-      )
-    })
-
-    it('should revert if unauthorized user attempts to withdraw', async function () {
-      const tx = recurringPayments.connect(user1.signer).withdraw(user1.address, ten)
-      await expect(tx).to.be.revertedWith('Only Governor can call')
     })
   })
 })

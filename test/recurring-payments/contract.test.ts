@@ -43,13 +43,13 @@ describe('RecurringPayments: Contract', () => {
 
   beforeEach(async function () {
     // eslint-disable-next-line @typescript-eslint/no-extra-semi
-    ;[me, governor, gelatoNetwork, user1] = await getAccounts()
+    ;[me, governor, user1] = await getAccounts()
 
     createData = ethers.utils.defaultAbiCoder.encode(['address', 'uint256'], [user1.address, oneHundred])
 
     token = await deployment.deployToken([tenBillion], me.signer, true)
 
-    automate = await deployMockGelatoNetwork(me.signer, gelatoNetwork.address)
+    automate = await deployMockGelatoNetwork(me.signer)
 
     // Deploy RecurringPayments contract
     recurringPayments = await deployment.deployRecurringPayments(

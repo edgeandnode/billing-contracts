@@ -9,9 +9,10 @@ import {
   AutomateMock,
   OpsProxyFactoryMock,
   PaymentMock,
+  ProxyModuleMock,
   SimplePaymentMock,
   Subscriptions,
-  TaskTreasuryMock,
+  GelatoMock,
 } from '../build/types'
 
 const hash = (input: string): string => utils.keccak256(`0x${input.replace(/^0x/, '')}`)
@@ -115,21 +116,30 @@ export async function deployAutomateMock(
 }
 
 // Pass the args in order to this func
-export async function deployTaskTreasuryMock(
-  args: Array<string | BigNumber>,
-  sender: Signer,
-  disableLogging?: boolean,
-): Promise<TaskTreasuryMock> {
-  return deployContract(args, sender, 'TaskTreasuryMock', disableLogging) as unknown as Promise<TaskTreasuryMock>
-}
-
-// Pass the args in order to this func
 export async function deployOpsProxyFactoryMock(
   args: Array<string | BigNumber>,
   sender: Signer,
   disableLogging?: boolean,
 ): Promise<OpsProxyFactoryMock> {
   return deployContract(args, sender, 'OpsProxyFactoryMock', disableLogging) as unknown as Promise<OpsProxyFactoryMock>
+}
+
+// Pass the args in order to this func
+export async function deployProxyModuleMock(
+  args: Array<string | BigNumber>,
+  sender: Signer,
+  disableLogging?: boolean,
+): Promise<ProxyModuleMock> {
+  return deployContract(args, sender, 'ProxyModuleMock', disableLogging) as unknown as Promise<ProxyModuleMock>
+}
+
+// Pass the args in order to this func
+export async function deployGelatoMock(
+  args: Array<string | BigNumber>,
+  sender: Signer,
+  disableLogging?: boolean,
+): Promise<GelatoMock> {
+  return deployContract(args, sender, 'GelatoMock', disableLogging) as unknown as Promise<GelatoMock>
 }
 
 // Pass the args in order to this func

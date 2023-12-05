@@ -24,20 +24,6 @@ contract GelatoManager is AutomateTaskCreator, Governed {
     event MaxGasPriceSet(uint256 maxGasPrice);
 
     /**
-     * @dev Emitted when funds are deposited into the Gelato treasury
-     * @param depositor User making the deposit
-     * @param amount Amount being deposited
-     */
-    event TreasuryFundsDeposited(address indexed depositor, uint256 amount);
-
-    /**
-     * @dev Emitted when funds are withdrawn from the Gelato treasury
-     * @param recepient Recepient receiving the funds
-     * @param amount Amount being withdrawn
-     */
-    event TreasuryFundsWithdrawn(address indexed recepient, uint256 amount);
-
-    /**
      * @dev Emitted when a resolver task is created in Gelato Network
      * @param taskId The id of the task
      */
@@ -74,29 +60,8 @@ contract GelatoManager is AutomateTaskCreator, Governed {
         address _automate,
         address _governor,
         uint256 _maxGasPrice
-    ) AutomateTaskCreator(_automate, _governor) Governed(_governor) {
+    ) AutomateTaskCreator(_automate) Governed(_governor) {
         _setMaxGasPrice(_maxGasPrice);
-    }
-
-    /**
-     * @notice Deposit eth into the Gelato Network treasury
-     * This function is NOT meant to be used by the end user, only by the contract operator
-     * Any funds deposited via this call will be used to pay for Gelato Network tasks
-     */
-    function deposit() external payable {
-        if (msg.value == 0) revert InvalidDepositAmount();
-        taskTreasury.depositFunds{ value: msg.value }(address(this), ETH, msg.value);
-        emit TreasuryFundsDeposited(msg.sender, msg.value);
-    }
-
-    /**
-     * @notice Withdraw eth from the Gelato Network treasury
-     * @param recepient Recepient receiving the funds
-     * @param amount Amount being withdrawn
-     */
-    function withdraw(address recepient, uint256 amount) external onlyGovernor {
-        taskTreasury.withdrawFunds(payable(recepient), ETH, amount);
-        emit TreasuryFundsWithdrawn(recepient, amount);
     }
 
     /**
@@ -131,9 +96,13 @@ contract GelatoManager is AutomateTaskCreator, Governed {
         address execAddress,
         bytes memory execDataOrSelector
     ) internal returns (bytes32) {
-        ModuleData memory moduleData = ModuleData({ modules: new Module[](1), args: new bytes[](1) });
+        ModuleData memory moduleData = ModuleData({ modules: new Module[](2), args: new bytes[](2) });
+
         moduleData.modules[0] = Module.RESOLVER;
+        moduleData.modules[1] = Module.PROXY;
+
         moduleData.args[0] = _resolverModuleArg(resolverAddress, resolverData);
+        moduleData.args[1] = _proxyModuleArg();
 
         bytes32 taskId = _createTask(execAddress, execDataOrSelector, moduleData, address(0));
         emit ResolverTaskCreated(taskId);
