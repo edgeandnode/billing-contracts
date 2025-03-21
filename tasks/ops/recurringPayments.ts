@@ -6,6 +6,54 @@ import { RecurringPayments } from '../../build/types'
 import { loadArtifact } from './utils'
 import addresses from '../../addresses.json'
 
+const ERC20_APPROVE_ABI = [
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: 'spender',
+        type: 'address',
+      },
+      {
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
+    ],
+    name: 'approve',
+    outputs: [
+      {
+        internalType: 'bool',
+        name: '',
+        type: 'bool',
+      },
+    ],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+]
+
+const ONE_BALANCE_ABI = [
+  {
+    inputs: [{ internalType: 'address', name: '_sponsor', type: 'address' }],
+    name: 'depositNative',
+    outputs: [],
+    stateMutability: 'payable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      { internalType: 'address', name: '_sponsor', type: 'address' },
+      { internalType: 'contract IERC20', name: '_token', type: 'address' },
+      { internalType: 'uint256', name: '_amount', type: 'uint256' },
+    ],
+    name: 'depositToken',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+]
+
 task('rp:register', 'Register a payment type')
   .addParam('name', 'Payment type name')
   .addParam('minimumRecurringAmount', 'Minimum recurring amount for the payment type', '100000000000000000000')
@@ -36,84 +84,47 @@ task('rp:register', 'Register a payment type')
     console.log('Registered payment type with tx hash:', receipt.transactionHash)
   })
 
-task('rp:deposit', 'Deposit eth into Gelato treasury')
-  .addParam('amount', 'Amount of ETH to deposit')
+// Gelato 1Balance system
+// For testnet deposit ETH on goerli
+// For production deposit USDC on polygon
+task('rp:deposit', 'Deposit funds into Gelato 1Balance')
+  .addParam('amount', 'Amount of ETH/USDC to deposit')
+  .addParam('recurringPayments', 'Address of the recurring payments contract')
   .setAction(async (taskArgs, hre: HardhatRuntimeEnvironment) => {
     const chainId = (hre.network.config.chainId as number).toString()
-    const rpAddress = addresses[chainId]['RecurringPayments']
-
-    const artifact = loadArtifact('RecurringPayments')
-    const recurringPayments = new ethers.Contract(rpAddress, artifact.abi, hre.ethers.provider) as RecurringPayments
-
     const accounts = await hre.ethers.getSigners()
 
-    console.log(`Depositing ${taskArgs.amount} ETH ...`)
-    const tx = await recurringPayments.connect(accounts[0]).deposit({ value: ethers.utils.parseEther(taskArgs.amount) })
+    if (!['5', '137'].includes(chainId)) {
+      throw new Error('Gelato 1Balance only supports Goerli and Polygon chains')
+    }
+
+    const oneBalanceAddress = addresses[chainId]['Gelato1Balance']
+    const oneBalance = new ethers.Contract(oneBalanceAddress, ONE_BALANCE_ABI, hre.ethers.provider)
+
+    let tx
+    if (chainId === '5') {
+      // Goerli accepts ETH only
+      console.log(`Depositing ${taskArgs.amount} ETH on Goerli ...`)
+      tx = await oneBalance.connect(accounts[0]).depositNative(taskArgs.recurringPayments, { value: taskArgs.amount })
+    } else {
+      // Polygon accepts USDC only
+      console.log(`Depositing ${taskArgs.amount} USDC on Polygon ...`)
+      const usdcAddress = addresses[chainId]['USDC']
+      const usdc = new ethers.Contract(usdcAddress, ERC20_APPROVE_ABI, hre.ethers.provider)
+      await usdc.connect(accounts[0]).approve(oneBalanceAddress, taskArgs.amount)
+      tx = await oneBalance.connect(accounts[0]).depositToken(taskArgs.recurringPayments, usdcAddress, taskArgs.amount)
+    }
+
     const receipt = await tx.wait()
     console.log('Deposited with tx hash:', receipt.transactionHash)
   })
 
+// TODO: implement 1Balance 2 step withdraw
 task('rp:withdraw', 'Withdraw all funds from Gelato treasury').setAction(
   async (taskArgs, hre: HardhatRuntimeEnvironment) => {
-    const chainId = (hre.network.config.chainId as number).toString()
-    const rpAddress = addresses[chainId]['RecurringPayments']
-
-    const artifact = loadArtifact('RecurringPayments')
-    const recurringPayments = new ethers.Contract(rpAddress, artifact.abi, hre.ethers.provider) as RecurringPayments
-
-    const treasuryAddress = await recurringPayments.taskTreasury()
-    const TREASURY_ABI = [
-      {
-        inputs: [
-          { internalType: 'address', name: '_user', type: 'address' },
-          { internalType: 'address', name: '_token', type: 'address' },
-        ],
-        name: 'userTokenBalance',
-        outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
-        stateMutability: 'view',
-        type: 'function',
-      },
-    ]
-    const treasury = new ethers.Contract(treasuryAddress, TREASURY_ABI, hre.ethers.provider)
-
-    const accounts = await hre.ethers.getSigners()
-    const userBalance = await treasury.userTokenBalance(
-      recurringPayments.address,
-      '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
-    )
-    console.log(`Withdrawing ${ethers.utils.formatEther(userBalance)} ETH ...`)
-    const tx = await recurringPayments.connect(accounts[0]).withdraw(accounts[0].address, userBalance)
-    const receipt = await tx.wait()
-    console.log('Withdrawn with tx hash:', receipt.transactionHash)
+    throw new Error('Not implemented yet')
   },
 )
-
-const ERC20_APPROVE_ABI = [
-  {
-    inputs: [
-      {
-        internalType: 'address',
-        name: 'spender',
-        type: 'address',
-      },
-      {
-        internalType: 'uint256',
-        name: 'amount',
-        type: 'uint256',
-      },
-    ],
-    name: 'approve',
-    outputs: [
-      {
-        internalType: 'bool',
-        name: '',
-        type: 'bool',
-      },
-    ],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-]
 
 task('rp:setup', 'Create a recurring payment')
   .addParam('type', 'Name of the payment type')

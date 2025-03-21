@@ -1,26 +1,24 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.16;
 
-import "../gelato/Types.sol";
+import "../../gelato/Types.sol";
 
 /**
  * @title Mock for the Gelato Automate contract
  */
 contract AutomateMock {
-    address internal gelatoAddr;
-    address internal treasuryAddr;
+    address public gelato;
+    address public feeCollector;
+    address public taskModuleAddress;
 
-    constructor(address _gelato, address _treasury) {
-        gelatoAddr = _gelato;
-        treasuryAddr = _treasury;
+    constructor(address _gelato, address _taskModuleAddress) {
+        gelato = _gelato;
+        taskModuleAddress = _taskModuleAddress;
+        feeCollector = address(0); // For this mock we don't care about the feeCollector
     }
 
-    function gelato() external view returns (address) {
-        return gelatoAddr;
-    }
-
-    function taskTreasury() external view returns (address) {
-        return treasuryAddr;
+    function taskModuleAddresses(Module) external view returns (address) {
+        return taskModuleAddress;
     }
 
     /// @dev This is NOT how Gelato computes task IDs
@@ -34,7 +32,7 @@ contract AutomateMock {
         return task;
     }
 
-    function cancelTask(bytes32 _taskId) external pure returns (bool) {
+    function cancelTask(bytes32) external pure returns (bool) {
         return true;
     }
 }
